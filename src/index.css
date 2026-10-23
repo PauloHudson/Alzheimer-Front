@@ -1,0 +1,157 @@
+@import "tailwindcss";
+@import "lenis/dist/lenis.css";
+
+/*
+ * Tokens de design.
+ * A interface é clara por padrão (áreas de dados e texto) e escura apenas na
+ * área de visualização da RM — decisão RC02 da Entrega 2 (OHIF × Glass Health).
+ *
+ * Tipografia: Plex Sans (corpo, legível em telas clínicas), Plex Mono (dados e
+ * rótulos no estilo dos cabeçalhos DICOM) e Instrument Serif apenas em títulos de vitrine.
+ */
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+
+  --color-background: #f7f8fb;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-muted: #eef1f6;
+  --color-muted-foreground: #5b6578;
+  --color-border: #e2e6ee;
+  --color-input: #d5dbe6;
+  --color-ring: #3b5bdb;
+
+  --color-primary: #2f4ac0;
+  --color-primary-hover: #263d9e;
+  --color-primary-foreground: #ffffff;
+  --color-primary-soft: #e8ecfb;
+
+  --color-accent: #0d9488;
+  --color-accent-soft: #ccfbf1;
+
+  --color-destructive: #dc2626;
+  --color-destructive-soft: #fee2e2;
+  --color-success: #15803d;
+  --color-success-soft: #dcfce7;
+  --color-warning: #b45309;
+  --color-warning-soft: #fef3c7;
+
+  /* Classes do modelo: CN (cognitivamente normal), MCI/CCL, AD/DA */
+  --color-cn: #16a34a;
+  --color-cn-soft: #dcfce7;
+  --color-mci: #d97706;
+  --color-mci-soft: #fef3c7;
+  --color-ad: #e11d48;
+  --color-ad-soft: #ffe4e6;
+
+  /* Área de visualização (escura) */
+  --color-viewer: #0b0f17;
+  --color-viewer-panel: #121826;
+  --color-viewer-border: #222b3d;
+  --color-viewer-foreground: #e5e9f2;
+  --color-viewer-muted: #8b95a8;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  --shadow-elevated: 0 10px 30px -10px rgb(15 23 42 / 0.18), 0 4px 10px -4px rgb(15 23 42 / 0.08);
+
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-fade-up: fade-up 0.45s ease-out both;
+  --animate-scale-in: scale-in 0.18s ease-out;
+  --animate-slide-in-right: slide-in-right 0.25s ease-out;
+  --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes scale-in {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes slide-in-right {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  html {
+    /* o cabeçalho fixo não pode encobrir o elemento focado/rolado (WCAG 2.4.11) */
+    scroll-padding-top: 7rem;
+    scroll-padding-bottom: 2rem;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  /* marca-texto usado no trecho de laudo da landing */
+  .highlight-mark {
+    background: linear-gradient(transparent 55%, rgb(250 204 21 / 0.45) 55%);
+    box-decoration-break: clone;
+  }
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-input) transparent;
+  }
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
