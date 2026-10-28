@@ -18,7 +18,7 @@ export function ModelLimits({ prediction }: { prediction: Prediction }) {
         <li>
           Treinado no <GlossaryTerm id="adni">ADNI</GlossaryTerm>; não validado no Brasil.
         </li>
-        {!prediction.classes.includes("MCI") && <li>Distingue só CN e DA; não avalia CCL.</li>}
+        {!prediction.classes.includes("MCI") && <li>Distingue só normal e Alzheimer; não avalia comprometimento leve.</li>}
       </ul>
       <p className="border-t pt-3 text-xs text-muted-foreground">
         {ARCHITECTURE_LABEL[prediction.architecture]} · {formatDateTime(prediction.generatedAt)}

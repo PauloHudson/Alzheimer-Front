@@ -16,7 +16,6 @@ export function ClassBadge({
   const info = CLASS_INFO[value];
   return (
     <Badge variant={info.badge} className={className} title={info.label}>
-      <span className="size-1.5 rounded-full bg-current" aria-hidden />
       {long ? info.label : info.short}
     </Badge>
   );

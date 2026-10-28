@@ -15,7 +15,7 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "Mapa de atenção",
     aka: "Grad-CAM",
     short:
-      "Áreas quentes são as que mais aproximaram o caso da classe DA, qualquer que seja a sugestão final. Não é segmentação nem indica lesão; a resolução é baixa (grade 7×7 ampliada).",
+      "Áreas quentes são as que mais aproximaram o caso do padrão de Alzheimer, qualquer que seja a sugestão final. Não é segmentação nem indica lesão; a resolução é baixa (grade 7×7 ampliada).",
   },
   {
     id: "peso-modalidade",
@@ -38,20 +38,20 @@ export const GLOSSARY: GlossaryEntry[] = [
   },
   {
     id: "cn",
-    term: "CN",
-    aka: "Cognitivamente normal",
+    term: "Normal",
+    aka: "CN — cognitivamente normal",
     short: "Padrão compatível com envelhecimento sem comprometimento cognitivo.",
   },
   {
     id: "mci",
-    term: "CCL",
-    aka: "MCI — comprometimento cognitivo leve",
+    term: "Comprometimento leve",
+    aka: "CCL / MCI — comprometimento cognitivo leve",
     short: "Declínio cognitivo maior que o esperado para a idade, com autonomia preservada.",
   },
   {
     id: "ad",
-    term: "DA",
-    aka: "AD — doença de Alzheimer",
+    term: "Alzheimer",
+    aka: "DA / AD — doença de Alzheimer",
     short: "Achados semelhantes aos de pacientes com doença de Alzheimer. Indica semelhança de padrão, não diagnóstico.",
   },
   {
