@@ -182,8 +182,8 @@ export function ScanStory({
             </p>
             <div className="mt-3 space-y-1.5">
               {(["CN", "AD"] as const).map((k) => (
-                <div key={k} className="flex items-center gap-2 font-mono text-[11px]">
-                  <span className="w-7 text-slate-500">{CLASS_INFO[k].short}</span>
+                <div key={k} className="flex items-center gap-2 text-[11px]">
+                  <span className="w-16 text-slate-500">{CLASS_INFO[k].short}</span>
                   <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
                     <span
                       className="block h-full rounded-full"

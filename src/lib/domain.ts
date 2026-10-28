@@ -11,27 +11,33 @@ import type {
 } from "@/types";
 import { formatPercent, lowerFirst } from "@/lib/utils";
 
-/** Vocabulário clínico exibido ao usuário. */
+/**
+ * Vocabulário clínico exibido ao usuário. `short` é o nome legível usado na
+ * interface; `code` é a sigla, mostrada só como apoio ao lado do nome.
+ */
 export const CLASS_INFO: Record<
   DiagnosticClass,
-  { short: string; label: string; description: string; badge: "cn" | "mci" | "ad"; color: string }
+  { short: string; code: string; label: string; description: string; badge: "cn" | "mci" | "ad"; color: string }
 > = {
   CN: {
-    short: "CN",
+    short: "Normal",
+    code: "CN",
     label: "Cognitivamente normal",
     description: "Padrão compatível com envelhecimento sem comprometimento cognitivo.",
     badge: "cn",
     color: "var(--color-cn)",
   },
   MCI: {
-    short: "CCL",
+    short: "Comprometimento leve",
+    code: "CCL",
     label: "Comprometimento cognitivo leve",
     description: "Declínio além do esperado para a idade, sem perda de autonomia funcional.",
     badge: "mci",
     color: "var(--color-mci)",
   },
   AD: {
-    short: "DA",
+    short: "Alzheimer",
+    code: "DA",
     label: "Padrão compatível com Alzheimer",
     description: "Achados de imagem e clínicos semelhantes aos de pacientes com doença de Alzheimer.",
     badge: "ad",

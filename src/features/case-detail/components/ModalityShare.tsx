@@ -1,3 +1,4 @@
+import { ClipboardList, ScanLine } from "lucide-react";
 import type { Prediction } from "@/types";
 import { formatPercent } from "@/lib/utils";
 
@@ -8,8 +9,13 @@ import { formatPercent } from "@/lib/utils";
  */
 export function ModalityShare({ share }: { share: NonNullable<Prediction["modalityShare"]> }) {
   const items = [
-    { label: "Imagem (RM)", value: share.image, color: "bg-primary" },
-    { label: "Dados clínicos", value: share.tabular, color: "bg-accent" },
+    { label: "Imagem (RM)", value: share.image, color: "bg-primary", icon: <ScanLine className="size-3.5 text-primary" /> },
+    {
+      label: "Dados clínicos",
+      value: share.tabular,
+      color: "bg-accent",
+      icon: <ClipboardList className="size-3.5 text-accent" />,
+    },
   ];
   return (
     <div className="space-y-4">
@@ -22,7 +28,7 @@ export function ModalityShare({ share }: { share: NonNullable<Prediction["modali
         {items.map((item) => (
           <div key={item.label}>
             <dt className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span className={`size-2 rounded-full ${item.color}`} aria-hidden />
+              {item.icon}
               {item.label}
             </dt>
             <dd className="mt-1 text-2xl font-semibold tabular-nums">{formatPercent(item.value)}</dd>

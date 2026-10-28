@@ -16,7 +16,6 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Logo } from "@/components/brand/Logo";
 import { ProbabilityBars } from "@/features/case-detail/components/ProbabilityBars";
@@ -190,10 +189,7 @@ export default function LandingPage() {
             className="mx-auto grid max-w-6xl items-center gap-16 px-4 pb-28 pt-14 sm:px-6 lg:grid-cols-[1fr_1.02fr] lg:pt-20"
           >
             <div>
-              <p className="inline-flex animate-fade-up items-center rounded-full border bg-card/70 px-3 py-1 text-xs font-medium text-muted-foreground shadow-card backdrop-blur">
-                IA explicável para neuroimagem
-              </p>
-              <h1 className="mt-6 font-display text-[3.4rem] leading-[0.98] tracking-[-0.01em] text-balance sm:text-7xl">
+              <h1 className="font-display text-[3.4rem] leading-[0.98] tracking-[-0.01em] text-balance sm:text-7xl">
                 <span className="block animate-fade-up [animation-delay:80ms]">A IA sugere e explica.</span>
                 <em className="block animate-fade-up bg-gradient-to-r from-primary via-[#6d5dfc] to-accent bg-clip-text pr-2 text-transparent [animation-delay:200ms]">
                   Você decide.
@@ -219,7 +215,7 @@ export default function LandingPage() {
               <dl className="mt-12 grid max-w-md animate-fade-up grid-cols-2 gap-x-8 gap-y-4 border-t pt-6 font-mono text-xs [animation-delay:560ms]">
                 {[
                   ["Entrada", "RM T1 · dados clínicos"],
-                  ["Saída", "CN × DA + probabilidade"],
+                  ["Saída", "Normal × Alzheimer + probabilidade"],
                   ["Explicação", "Grad-CAM · imagem × clínica"],
                   ["Decisão", "sempre do médico"],
                 ].map(([term, value]) => (
@@ -241,7 +237,6 @@ export default function LandingPage() {
                     <span className="block font-medium">Ivo Bittencourt · 71 anos</span>
                     <span className="block font-mono text-[11px] text-muted-foreground">PAC-0417 · RM 23/10</span>
                   </span>
-                  <Badge variant="default">Aguardando revisão</Badge>
                 </div>
                 <MriViewer regions={sample.regions} atrophy={0.55} compact patientCode="PAC-0417" />
               </div>
@@ -583,7 +578,7 @@ export default function LandingPage() {
 const FAQ = [
   {
     q: "O sistema faz o diagnóstico?",
-    a: "Não. Ele sugere um padrão, CN ou DA, e explica por quê. A decisão é do médico.",
+    a: "Não. Ele sugere um padrão, normal ou Alzheimer, e explica por quê. A decisão é do médico.",
   },
   {
     q: "Preciso saber interpretar ressonância magnética?",
