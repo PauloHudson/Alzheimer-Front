@@ -1,7 +1,5 @@
 import * as React from "react";
 import * as SwitchPrimitive from "@radix-ui/react-switch";
-import * as ProgressPrimitive from "@radix-ui/react-progress";
-import * as SeparatorPrimitive from "@radix-ui/react-separator";
 import * as CheckboxPrimitive from "@radix-ui/react-checkbox";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import * as AvatarPrimitive from "@radix-ui/react-avatar";
@@ -30,42 +28,6 @@ export const Switch = React.forwardRef<
   </SwitchPrimitive.Root>
 ));
 Switch.displayName = "Switch";
-
-// ------------------------------------------------------------------ Progress
-
-export const Progress = React.forwardRef<
-  React.ElementRef<typeof ProgressPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & { indicatorClassName?: string }
->(({ className, value, indicatorClassName, ...props }, ref) => (
-  <ProgressPrimitive.Root
-    ref={ref}
-    value={value}
-    className={cn("relative h-2 w-full overflow-hidden rounded-full bg-muted", className)}
-    {...props}
-  >
-    <ProgressPrimitive.Indicator
-      className={cn("h-full bg-primary transition-all duration-500", indicatorClassName)}
-      style={{ width: `${value ?? 0}%` }}
-    />
-  </ProgressPrimitive.Root>
-));
-Progress.displayName = "Progress";
-
-// ------------------------------------------------------------------ Separator
-
-export const Separator = React.forwardRef<
-  React.ElementRef<typeof SeparatorPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof SeparatorPrimitive.Root>
->(({ className, orientation = "horizontal", decorative = true, ...props }, ref) => (
-  <SeparatorPrimitive.Root
-    ref={ref}
-    decorative={decorative}
-    orientation={orientation}
-    className={cn("shrink-0 bg-border", orientation === "horizontal" ? "h-px w-full" : "h-full w-px", className)}
-    {...props}
-  />
-));
-Separator.displayName = "Separator";
 
 // ------------------------------------------------------------------ Checkbox
 

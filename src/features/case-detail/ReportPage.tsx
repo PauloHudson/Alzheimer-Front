@@ -1,37 +1,39 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Printer } from "lucide-react";
+import type { GradCam } from "@/types";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/brand/Logo";
 import { ErrorState } from "@/components/ui/states";
 import { useCase } from "@/hooks/useCases";
-import { api } from "@/services/api";
-import { AGREEMENT_INFO, CLASS_INFO, CONFIDENCE_INFO, FINAL_DIAGNOSIS_LABEL } from "@/lib/domain";
+import {
+  AGREEMENT_INFO,
+  apoe4Alleles,
+  ARCHITECTURE_LABEL,
+  CLASS_INFO,
+  CONFIDENCE_INFO,
+  confidenceFromProbabilities,
+  FINAL_DIAGNOSIS_LABEL,
+  summarizePrediction,
+} from "@/lib/domain";
 import { formatDate, formatDateTime, formatPercent } from "@/lib/utils";
-import { DEFAULT_SLICE } from "@/features/viewer/anatomy";
-import { atrophyFromProbabilities, MRI_SIZE, renderHeatmap, renderSlice, tToSlice } from "@/features/viewer/renderMri";
-import type { AttentionRegion, DiagnosticClass } from "@/types";
+import { composeGradCam } from "@/features/viewer/heatmap";
 import { useAuth } from "@/store/auth";
 
-/** Corte coronal com o mapa de atenção sobreposto, como imagem estática para o relatório. */
-function useKeyImage(regions: AttentionRegion[] | undefined, atrophy: number) {
-  return useMemo(() => {
-    if (!regions) return null;
-    const slice = tToSlice(DEFAULT_SLICE.coronal);
-    const canvas = document.createElement("canvas");
-    canvas.width = MRI_SIZE;
-    canvas.height = MRI_SIZE;
-    const ctx = canvas.getContext("2d")!;
-    ctx.putImageData(renderSlice("coronal", slice, atrophy), 0, 0);
-    const heat = document.createElement("canvas");
-    heat.width = 128;
-    heat.height = 128;
-    heat.getContext("2d")!.putImageData(renderHeatmap(regions, "coronal", slice), 0, 0);
-    ctx.globalAlpha = 0.6;
-    ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(heat, 0, 0, MRI_SIZE, MRI_SIZE);
-    return canvas.toDataURL("image/png");
-  }, [regions, atrophy]);
+/** Corte com o mapa de atenção sobreposto, como imagem estática para o relatório. */
+function useKeyImage(gradcam: GradCam | undefined) {
+  const [image, setImage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!gradcam) return;
+    let cancelled = false;
+    composeGradCam(gradcam.sliceUrl, gradcam.heatmapUrl)
+      .then((url) => !cancelled && setImage(url))
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [gradcam]);
+  return image;
 }
 
 export default function ReportPage() {
@@ -39,16 +41,11 @@ export default function ReportPage() {
   const user = useAuth((s) => s.user)!;
   const { data, isLoading, isError } = useCase(id);
   const prediction = data?.prediction;
-  const image = useKeyImage(prediction?.regions, atrophyFromProbabilities(prediction?.probabilities));
+  const image = useKeyImage(prediction?.gradcam);
 
   useEffect(() => {
     if (data) document.title = `Relatório ${data.id} · M-XAI`;
   }, [data]);
-
-  const print = () => {
-    if (data) void api.cases.logEvent(data.id, "relatorio_exportado").catch(() => undefined);
-    window.print();
-  };
 
   if (isLoading)
     return (
@@ -58,7 +55,8 @@ export default function ReportPage() {
     );
   if (isError || !data || !prediction) return <ErrorState title="Relatório indisponível" />;
 
-  const opinions = data.referrals.filter((r) => r.opinion);
+  const band = confidenceFromProbabilities(prediction.probabilities);
+  const { tabular } = data;
 
   return (
     <div className="min-h-screen bg-muted/50 py-8 print:bg-white print:py-0">
@@ -68,7 +66,7 @@ export default function ReportPage() {
             <ArrowLeft /> Voltar ao caso
           </Link>
         </Button>
-        <Button onClick={print}>
+        <Button onClick={() => window.print()}>
           <Printer /> Imprimir / salvar PDF
         </Button>
       </div>
@@ -91,12 +89,29 @@ export default function ReportPage() {
 
         <section className="grid grid-cols-4 gap-4 rounded-lg bg-slate-50 p-4 text-xs">
           <Info label="Paciente" value={`${data.patient.name} (${data.patient.code})`} span />
-          <Info label="Idade / sexo" value={`${data.patient.age} anos · ${data.patient.sex === "F" ? "F" : "M"}`} />
-          <Info label="Escolaridade" value={`${data.patient.educationYears} anos`} />
+          <Info label="Idade / sexo" value={`${data.patient.age} anos · ${data.patient.sex}`} />
           <Info label="Data da RM" value={formatDate(data.examDate)} />
-          <Info label="Solicitante" value={data.requestedBy} />
-          <Info label="MMSE / MoCA" value={`${data.clinical.mmse ?? "—"} / ${data.clinical.moca ?? "—"}`} />
-          <Info label="Pergunta clínica" value={data.clinical.clinicalQuestion} span />
+          <Info label="Escolaridade" value={`${data.patient.educationYears} anos`} />
+          <Info
+            label="APOE"
+            value={tabular.apoe ? `${tabular.apoe} (${apoe4Alleles(tabular.apoe)} ε4)` : "não informado"}
+          />
+          <Info
+            label="Hipocampo / ICV"
+            value={
+              tabular.hippocampusMm3 && tabular.icvMm3
+                ? `${((tabular.hippocampusMm3 / tabular.icvMm3) * 100).toFixed(2)}%`
+                : "não informado"
+            }
+          />
+          <Info
+            label="Ventrículos / ICV"
+            value={
+              tabular.lateralVentriclesMm3 && tabular.icvMm3
+                ? `${((tabular.lateralVentriclesMm3 / tabular.icvMm3) * 100).toFixed(2)}%`
+                : "não informado"
+            }
+          />
         </section>
 
         <section className="grid grid-cols-[1fr_200px] gap-6">
@@ -106,70 +121,37 @@ export default function ReportPage() {
               {CLASS_INFO[prediction.suggested].label}
             </p>
             <p>
-              {CONFIDENCE_INFO[prediction.confidence].label}.{" "}
-              {(Object.keys(prediction.probabilities) as DiagnosticClass[])
-                .map((k) => `${CLASS_INFO[k].short} ${formatPercent(prediction.probabilities[k])}`)
+              {CONFIDENCE_INFO[band].label}.{" "}
+              {prediction.classes
+                .map((k) => `${CLASS_INFO[k].short} ${formatPercent(prediction.probabilities[k] ?? 0)}`)
                 .join(" · ")}
             </p>
-            <p className="rounded bg-slate-50 p-3">{prediction.summary}</p>
+            <p className="rounded bg-slate-50 p-3">{summarizePrediction(prediction)}</p>
+            {prediction.modalityShare && (
+              <p className="text-xs text-slate-500">
+                Peso na decisão: imagem {formatPercent(prediction.modalityShare.image)} · dados clínicos{" "}
+                {formatPercent(prediction.modalityShare.tabular)}.
+              </p>
+            )}
+            {prediction.caveats.length > 0 && (
+              <ul className="list-disc space-y-0.5 pl-4 text-xs text-amber-700">
+                {prediction.caveats.map((c) => (
+                  <li key={c}>{c}</li>
+                ))}
+              </ul>
+            )}
           </div>
           {image && (
             <figure className="space-y-1">
-              <img src={image} alt="Corte coronal com mapa de atenção" className="w-full rounded bg-black" />
+              <img src={image} alt="Corte axial com mapa de atenção" className="w-full rounded bg-black" />
               <figcaption className="text-[10px] text-slate-500">
-                Corte coronal com mapa de atenção (imagem sintética de demonstração).
+                Corte axial no nível ventricular com o Grad-CAM do logit{" "}
+                {CLASS_INFO[prediction.gradcam!.explainedClass].short}
+.
               </figcaption>
             </figure>
           )}
         </section>
-
-        <section className="grid grid-cols-2 gap-6">
-          <div>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Principais fatores</h2>
-            <table className="w-full text-xs">
-              <tbody className="divide-y">
-                {prediction.features.slice(0, 7).map((f) => (
-                  <tr key={f.id}>
-                    <td className="py-1.5 pr-2">{f.label}</td>
-                    <td className="py-1.5 pr-2 text-slate-500">{f.value}</td>
-                    <td className="py-1.5 text-right">{f.contribution >= 0 ? "↑ aproxima" : "↓ afasta"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Biomarcadores</h2>
-            <table className="w-full text-xs">
-              <tbody className="divide-y">
-                {prediction.biomarkers.map((b) => (
-                  <tr key={b.id}>
-                    <td className="py-1.5 pr-2">{b.label}</td>
-                    <td className="py-1.5 pr-2">
-                      {b.value.toLocaleString("pt-BR")} {b.unit}
-                    </td>
-                    <td className="py-1.5 text-right text-slate-500">p{b.percentile}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        {opinions.length > 0 && (
-          <section>
-            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Pareceres de especialistas</h2>
-            {opinions.map((r) => (
-              <div key={r.id} className="rounded border p-3 text-xs">
-                <p className="font-medium">
-                  {r.opinion!.author} ({r.opinion!.specialty}, {r.opinion!.channel}) — {formatDate(r.opinion!.date)}
-                </p>
-                <p className="mt-1">{r.opinion!.conclusion}</p>
-                <p className="mt-1 text-slate-500">Recomendação: {r.opinion!.recommendation}</p>
-              </div>
-            ))}
-          </section>
-        )}
 
         <section>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Decisão do médico</h2>
@@ -178,9 +160,6 @@ export default function ReportPage() {
               <p>
                 <strong>{FINAL_DIAGNOSIS_LABEL[data.decision.finalDiagnosis]}</strong> —{" "}
                 {AGREEMENT_INFO[data.decision.agreement].label.toLowerCase()}.
-              </p>
-              <p>
-                <span className="text-slate-500">Conduta:</span> {data.decision.conduct}
               </p>
               <p className="whitespace-pre-line">
                 <span className="text-slate-500">Justificativa:</span> {data.decision.justification}
@@ -195,9 +174,9 @@ export default function ReportPage() {
         </section>
 
         <footer className="border-t pt-3 text-[10px] leading-relaxed text-slate-500">
-          Este relatório apresenta uma sugestão gerada por modelo de IA ({prediction.modelVersion}) treinado com dados do
-          ADNI, não validado para a população brasileira. A sugestão não constitui diagnóstico; a decisão clínica e sua
-          responsabilidade são do médico. Protótipo acadêmico (FEI, IHC 2026) com dados simulados.
+          Sugestão gerada por modelo de IA ({ARCHITECTURE_LABEL[prediction.architecture]}, {prediction.modelVersion})
+          treinado com dados do ADNI, não validado para a população brasileira. A sugestão não constitui diagnóstico; a
+          decisão clínica e sua responsabilidade são do médico.
         </footer>
       </article>
     </div>

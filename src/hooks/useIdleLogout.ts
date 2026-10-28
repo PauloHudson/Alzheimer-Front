@@ -3,8 +3,8 @@ import { useEffect, useRef } from "react";
 const EVENTS = ["mousemove", "keydown", "mousedown", "touchstart", "wheel"] as const;
 
 /**
- * Encerra a sessão após um período sem interação — estações clínicas são compartilhadas
- * (Entrega 1, item 5.3). Avisa antes de expirar para o usuário não perder o que está fazendo.
+ * Encerra a sessão após um período sem interação — estações clínicas são compartilhadas.
+ * Avisa antes de expirar para o usuário não perder o que está fazendo.
  */
 export function useIdleLogout({
   timeoutMs,

@@ -1,4 +1,4 @@
-import type { Plane, RegionAnchor } from "@/types";
+import type { Plane, RegionAnchor } from "./types";
 
 /**
  * Posições anatômicas aproximadas usadas tanto pelo renderizador da RM sintética

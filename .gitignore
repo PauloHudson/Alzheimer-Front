@@ -13,3 +13,7 @@ dist-ssr
 .DS_Store
 Thumbs.db
 *.log
+
+# Cópia local do backend (repositório privado) — só para referência
+Back/
+/Back

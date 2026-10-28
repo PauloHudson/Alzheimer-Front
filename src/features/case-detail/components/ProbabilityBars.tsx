@@ -1,26 +1,24 @@
-import type { DiagnosticClass } from "@/types";
+import type { DiagnosticClass, Prediction } from "@/types";
 import { CLASS_INFO } from "@/lib/domain";
 import { cn, formatPercent } from "@/lib/utils";
 import { GlossaryTerm } from "@/components/domain/GlossaryTerm";
 
-const ORDER: DiagnosticClass[] = ["CN", "MCI", "AD"];
 const GLOSSARY_ID: Record<DiagnosticClass, string> = { CN: "cn", MCI: "mci", AD: "ad" };
 
+/** Uma barra por classe do modelo — duas no binário CN × AD, três no modelo CN/MCI/AD. */
 export function ProbabilityBars({
-  probabilities,
-  suggested,
+  prediction,
   compact = false,
 }: {
-  probabilities: Record<DiagnosticClass, number>;
-  suggested: DiagnosticClass;
+  prediction: Pick<Prediction, "classes" | "probabilities" | "suggested">;
   compact?: boolean;
 }) {
   return (
     <ul className={cn("space-y-2.5", compact && "space-y-1.5")} aria-label="Probabilidade por classe">
-      {ORDER.map((key) => {
+      {prediction.classes.map((key) => {
         const info = CLASS_INFO[key];
-        const value = probabilities[key];
-        const isTop = key === suggested;
+        const value = prediction.probabilities[key] ?? 0;
+        const isTop = key === prediction.suggested;
         return (
           <li key={key} className="space-y-1">
             <div className="flex items-baseline justify-between gap-2 text-sm">

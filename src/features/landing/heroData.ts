@@ -1,5 +1,5 @@
-import type { AttentionRegion } from "@/types";
-import { ANATOMY } from "@/features/viewer/anatomy";
+import type { AttentionRegion } from "./showcase/types";
+import { ANATOMY } from "./showcase/anatomy";
 
 /** Regiões estáticas usadas nas vitrines (landing e login). */
 export const HERO_REGIONS: AttentionRegion[] = [

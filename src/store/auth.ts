@@ -12,7 +12,7 @@ interface AuthState {
 
 /**
  * A sessão fica no sessionStorage (e não no localStorage): estações de trabalho
- * clínicas costumam ser compartilhadas (Entrega 1, item 5.3), então fechar a aba encerra o acesso.
+ * clínicas costumam ser compartilhadas, então fechar a aba encerra o acesso.
  */
 export const useAuth = create<AuthState>()(
   persist(

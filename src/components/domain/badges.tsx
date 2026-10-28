@@ -31,13 +31,12 @@ export function FinalDiagnosisBadge({ value }: { value: FinalDiagnosis }) {
   );
 }
 
-export function StatusBadge({ status, progress }: { status: CaseStatus; progress?: number }) {
+export function StatusBadge({ status }: { status: CaseStatus }) {
   const info = STATUS_INFO[status];
   return (
     <Badge variant={info.badge} title={info.description}>
       {status === "processando" && <Loader2 className="animate-spin" aria-hidden />}
       {info.label}
-      {status === "processando" && progress !== undefined && <span className="tabular-nums">· {progress}%</span>}
     </Badge>
   );
 }
@@ -46,7 +45,7 @@ const CONFIDENCE_LEVEL: Record<ConfidenceBand, number> = { baixa: 1, moderada: 2
 const TONE_BG = { destructive: "bg-destructive", warning: "bg-mci", success: "bg-cn" } as const;
 const TONE_TEXT = { destructive: "text-destructive", warning: "text-warning", success: "text-success" } as const;
 
-/** Faixa de confiança em 3 níveis — nunca um número isolado (RC10). */
+/** Faixa de confiança em 3 níveis — nunca um número isolado. */
 export function ConfidenceMeter({ band, className }: { band: ConfidenceBand; className?: string }) {
   const info = CONFIDENCE_INFO[band];
   const level = CONFIDENCE_LEVEL[band];

@@ -1,15 +1,17 @@
 import type {
   Agreement,
+  ApoeGenotype,
+  Architecture,
   CaseStatus,
   ConfidenceBand,
   DiagnosticClass,
   FinalDiagnosis,
+  MaritalStatus,
   Prediction,
-  ReferralUrgency,
-  Role,
 } from "@/types";
+import { formatPercent, lowerFirst } from "@/lib/utils";
 
-/** Vocabulário clínico exibido ao usuário (Entrega 1, item 6.6). */
+/** Vocabulário clínico exibido ao usuário. */
 export const CLASS_INFO: Record<
   DiagnosticClass,
   { short: string; label: string; description: string; badge: "cn" | "mci" | "ad"; color: string }
@@ -46,38 +48,34 @@ export const FINAL_DIAGNOSIS_LABEL: Record<FinalDiagnosis, string> = {
 
 export const STATUS_INFO: Record<
   CaseStatus,
-  { label: string; badge: "secondary" | "warning" | "default" | "accent" | "success"; description: string }
+  { label: string; badge: "secondary" | "destructive" | "default" | "success"; description: string }
 > = {
   processando: {
     label: "Em análise",
     badge: "secondary",
     description: "O modelo está processando a RM e os dados clínicos.",
   },
-  pendencia: {
-    label: "Pendência",
-    badge: "warning",
-    description: "Há itens obrigatórios de qualidade ou dados clínicos em aberto.",
+  erro: {
+    label: "Falha na análise",
+    badge: "destructive",
+    description: "O backend não conseguiu processar o exame.",
   },
   aguardando_revisao: {
     label: "Aguardando revisão",
     badge: "default",
     description: "A sugestão está pronta e aguarda a decisão do médico.",
   },
-  encaminhado: {
-    label: "Encaminhado",
-    badge: "accent",
-    description: "Aguardando parecer de especialista.",
-  },
   concluido: {
     label: "Concluído",
     badge: "success",
-    description: "Decisão registrada na trilha de auditoria.",
+    description: "Decisão do médico registrada.",
   },
 };
 
 /**
- * Faixas de confiança — o número nunca aparece isolado (RC10).
- * Os limiares são provisórios e devem ser calibrados com a equipe do modelo.
+ * Faixas de confiança — o número nunca aparece isolado.
+ * Os limiares são provisórios: o README do backend mostra que a calibração não
+ * transfere entre coortes, então eles precisam ser revistos com a equipe do modelo.
  */
 export const CONFIDENCE_INFO: Record<
   ConfidenceBand,
@@ -85,8 +83,7 @@ export const CONFIDENCE_INFO: Record<
 > = {
   baixa: {
     label: "Confiança baixa",
-    description:
-      "As probabilidades estão próximas entre si. Trate a sugestão com cautela e considere encaminhar a um especialista.",
+    description: "As probabilidades estão próximas entre si. Trate a sugestão com cautela.",
     tone: "destructive",
   },
   moderada: {
@@ -111,6 +108,18 @@ export function confidenceFromProbabilities(p: Prediction["probabilities"]): Con
   return "baixa";
 }
 
+/** Frase-resumo montada a partir das probabilidades — o modelo não gera texto. */
+export function summarizePrediction(prediction: Prediction) {
+  const top = prediction.probabilities[prediction.suggested] ?? 0;
+  const others = prediction.classes
+    .filter((c) => c !== prediction.suggested)
+    .map((c) => `${CLASS_INFO[c].short} ${formatPercent(prediction.probabilities[c] ?? 0)}`)
+    .join(", ");
+  return `O modelo atribui ${formatPercent(top)} de probabilidade a ${lowerFirst(
+    CLASS_INFO[prediction.suggested].label,
+  )} (${others}).`;
+}
+
 export const AGREEMENT_INFO: Record<Agreement, { label: string; description: string }> = {
   concorda: {
     label: "Concordo com a sugestão",
@@ -118,7 +127,7 @@ export const AGREEMENT_INFO: Record<Agreement, { label: string; description: str
   },
   ajusta: {
     label: "Concordo parcialmente",
-    description: "Ajusto a classificação ou a conduta com base em informações adicionais.",
+    description: "Ajusto a classificação com base em informações adicionais.",
   },
   discorda: {
     label: "Discordo da sugestão",
@@ -126,40 +135,24 @@ export const AGREEMENT_INFO: Record<Agreement, { label: string; description: str
   },
 };
 
-export const ROLE_INFO: Record<Role, { label: string; short: string; description: string }> = {
-  medico_clinico: {
-    label: "Médico(a) clínico(a)",
-    short: "Clínico",
-    description: "Interpreta a sugestão explicada e registra a decisão.",
-  },
-  neurologista: {
-    label: "Neurologista",
-    short: "Neurologia",
-    description: "Valida casos encaminhados e emite parecer.",
-  },
-  radiologista: {
-    label: "Radiologista",
-    short: "Radiologia",
-    description: "Consulta a explicação localizada como apoio ao laudo.",
-  },
-  tecnico: {
-    label: "Técnico(a) em radiologia",
-    short: "Técnico",
-    description: "Prepara o caso e confere qualidade e dados antes do envio.",
-  },
+export const ARCHITECTURE_LABEL: Record<Architecture, string> = {
+  late_fusion: "Fusão tardia (ResNet50 + Random Forest)",
+  early_fusion: "Fusão precoce (ResNet50 + MLP)",
+  image_only: "Só imagem (ResNet50)",
+  tabular_only: "Só dados clínicos (MLP)",
 };
 
-export const URGENCY_INFO: Record<ReferralUrgency, { label: string; badge: "secondary" | "warning" | "destructive" }> =
-  {
-    rotina: { label: "Rotina", badge: "secondary" },
-    prioritario: { label: "Prioritário", badge: "warning" },
-    urgente: { label: "Urgente", badge: "destructive" },
-  };
+export const APOE_OPTIONS: ApoeGenotype[] = ["ε2/ε2", "ε2/ε3", "ε2/ε4", "ε3/ε3", "ε3/ε4", "ε4/ε4"];
 
-export function canDecide(role: Role) {
-  return role === "medico_clinico" || role === "neurologista";
-}
+export const MARITAL_LABEL: Record<MaritalStatus, string> = {
+  Married: "Casado(a)",
+  Widowed: "Viúvo(a)",
+  Divorced: "Divorciado(a)",
+  "Never married": "Nunca casou",
+  Unknown: "Não informado",
+};
 
-export function canCreateCase(role: Role) {
-  return role === "tecnico" || role === "medico_clinico";
+/** Número de alelos ε4 — o mesmo `apoe4_alleles` que o backend deriva. */
+export function apoe4Alleles(genotype: ApoeGenotype) {
+  return (genotype.match(/4/g) ?? []).length;
 }

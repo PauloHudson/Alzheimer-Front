@@ -1,27 +1,18 @@
-import type {
-  AuditEvent,
-  CaseStatus,
-  CaseSummary,
-  ClinicalCase,
-  DashboardStats,
-  DiagnosticClass,
-  User,
-} from "@/types";
+import type { CaseStatus, CaseSummary, ClinicalCase, User } from "@/types";
 import { ApiError, type Api } from "../contract";
 import { getAuthToken } from "../http/client";
-import { canDecide } from "@/lib/domain";
 import { sleep, uid } from "@/lib/utils";
 import { createSeed, type MockUser } from "./seed";
-import { buildPrediction, profileFromIntake } from "./prediction";
+import { buildPrediction } from "./prediction";
 
 /**
- * API simulada em memória, persistida no localStorage para que decisões,
- * encaminhamentos e novos casos sobrevivam a recarregamentos durante testes de usabilidade.
+ * API simulada em memória, persistida no localStorage para que decisões e
+ * novos casos sobrevivam a recarregamentos durante testes de usabilidade.
  */
 
-const STORAGE_KEY = "mxai.mockdb.v3";
-/** Duração simulada da inferência do modelo. */
-const PROCESSING_MS = 18_000;
+const STORAGE_KEY = "mxai.mockdb.v5";
+/** Duração simulada da inferência (skull strip + CNN + Grad-CAM). */
+const PROCESSING_MS = 12_000;
 
 interface MockDb {
   users: MockUser[];
@@ -40,10 +31,7 @@ function fresh(sessions: Record<string, string> = {}): MockDb {
 function load(): MockDb {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw) as Omit<MockDb, "processingStart"> & Partial<MockDb>;
-      return { ...parsed, processingStart: parsed.processingStart ?? {} };
-    }
+    if (raw) return JSON.parse(raw) as MockDb;
   } catch {
     /* armazenamento indisponível (modo privado etc.) — segue em memória */
   }
@@ -89,38 +77,22 @@ function findCase(id: string) {
   return found;
 }
 
-function audit(c: ClinicalCase, action: AuditEvent["action"], actor: string, detail: string) {
-  const at = new Date().toISOString();
-  c.audit.push({ id: uid("ev"), action, actor, at, detail });
-  c.updatedAt = at;
-}
-
-/** Avança casos em processamento conforme o tempo passa. */
+/** Conclui as inferências cujo tempo simulado já passou. */
 function tick() {
   let changed = false;
   for (const c of db.cases) {
     if (c.status !== "processando") continue;
-    const start = (db.processingStart[c.id] ??= Date.now() - ((c.progress ?? 0) / 100) * PROCESSING_MS);
-    const elapsed = Date.now() - start;
-    if (elapsed >= PROCESSING_MS) {
-      c.prediction = buildPrediction(
-        profileFromIntake({
-          age: c.patient.age,
-          sex: c.patient.sex,
-          educationYears: c.patient.educationYears,
-          familyHistory: c.clinical.familyHistory,
-          mmse: c.clinical.mmse,
-          moca: c.clinical.moca,
-          cdrSb: c.clinical.cdrSb,
-          generatedAt: new Date().toISOString(),
-        }),
-      );
-      c.status = "aguardando_revisao";
-      c.progress = undefined;
-      audit(c, "analise_concluida", "Sistema", "Sugestão gerada pelo modelo.");
-    } else {
-      c.progress = Math.min(97, Math.round((elapsed / PROCESSING_MS) * 100));
-    }
+    const start = (db.processingStart[c.id] ??= Date.now());
+    if (Date.now() - start < PROCESSING_MS) continue;
+    const generatedAt = new Date().toISOString();
+    c.prediction = buildPrediction({
+      ...c.patient,
+      tabular: c.tabular,
+      seed: Number(c.id.replace(/\D/g, "")) || 1,
+      generatedAt,
+    });
+    c.status = "aguardando_revisao";
+    c.updatedAt = generatedAt;
     changed = true;
   }
   if (changed) save();
@@ -128,22 +100,18 @@ function tick() {
 
 const STATUS_ORDER: Record<CaseStatus, number> = {
   aguardando_revisao: 0,
-  encaminhado: 1,
-  processando: 2,
-  pendencia: 3,
-  concluido: 4,
+  processando: 1,
+  erro: 2,
+  concluido: 3,
 };
 
 function toSummary(c: ClinicalCase): CaseSummary {
-  const probs = c.prediction?.probabilities;
   return {
     id: c.id,
     status: c.status,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
     examDate: c.examDate,
-    requestedBy: c.requestedBy,
-    progress: c.progress,
     patient: {
       id: c.patient.id,
       name: c.patient.name,
@@ -152,16 +120,19 @@ function toSummary(c: ClinicalCase): CaseSummary {
       sex: c.patient.sex,
     },
     suggested: c.prediction?.suggested,
-    confidence: c.prediction?.confidence,
-    topProbability: probs ? Math.max(...Object.values(probs)) : undefined,
+    probabilities: c.prediction?.probabilities,
     finalDiagnosis: c.decision?.finalDiagnosis,
-    agreement: c.decision?.agreement,
-    hasOpinion: c.referrals.some((r) => r.status === "respondido"),
-    pendingCount: c.pendingItems?.length ?? 0,
   };
 }
 
 const clone = <T>(value: T): T => structuredClone(value);
+
+function ageAt(birthDate: string, date: string) {
+  const birth = new Date(birthDate);
+  const at = new Date(date);
+  const hadBirthday = at >= new Date(at.getFullYear(), birth.getMonth(), birth.getDate());
+  return at.getFullYear() - birth.getFullYear() - (hadBirthday ? 0 : 1);
+}
 
 export const mockApi: Api = {
   auth: {
@@ -184,11 +155,6 @@ export const mockApi: Api = {
       return createSession(user);
     },
 
-    async requestPasswordReset() {
-      // Resposta idêntica exista ou não a conta, para não revelar e-mails cadastrados.
-      await latency(500, 800);
-    },
-
     async logout() {
       const token = getAuthToken();
       if (token) {
@@ -206,9 +172,6 @@ export const mockApi: Api = {
       const search = filters.search?.trim().toLowerCase();
       return db.cases
         .filter((c) => (filters.status && filters.status !== "todos" ? c.status === filters.status : true))
-        .filter((c) =>
-          filters.suggested && filters.suggested !== "todos" ? c.prediction?.suggested === filters.suggested : true,
-        )
         .filter((c) =>
           search
             ? [c.patient.name, c.patient.code, c.id].some((field) => field.toLowerCase().includes(search))
@@ -229,50 +192,11 @@ export const mockApi: Api = {
       return clone(findCase(id));
     },
 
-    async stats() {
-      await latency(200, 400);
-      currentUser();
-      tick();
-      const monthAgo = Date.now() - 30 * 24 * 3_600_000;
-      const count = (status: CaseStatus) => db.cases.filter((c) => c.status === status).length;
-      const agreement = { concorda: 0, ajusta: 0, discorda: 0 };
-      const bySuggestion: Record<DiagnosticClass, number> = { CN: 0, MCI: 0, AD: 0 };
-      for (const c of db.cases) {
-        if (c.decision) agreement[c.decision.agreement] += 1;
-        if (c.prediction) bySuggestion[c.prediction.suggested] += 1;
-      }
-      const stats: DashboardStats = {
-        awaitingReview: count("aguardando_revisao"),
-        processing: count("processando"),
-        referred: count("encaminhado"),
-        pending: count("pendencia"),
-        completedThisMonth: db.cases.filter(
-          (c) => c.decision && new Date(c.decision.decidedAt).getTime() >= monthAgo,
-        ).length,
-        agreement,
-        bySuggestion,
-      };
-      return stats;
-    },
-
     async create(input) {
       await latency(700, 1200);
       const user = currentUser();
-      const nextNumber =
-        Math.max(...db.cases.map((c) => Number(c.id.replace(/\D/g, "")) || 0), 1000) + 1;
-      const now = new Date();
-      const birth = new Date(input.patient.birthDate);
-      const hadBirthday = now >= new Date(now.getFullYear(), birth.getMonth(), birth.getDate());
-      const age = now.getFullYear() - birth.getFullYear() - (hadBirthday ? 0 : 1);
-
-      const pendingItems: string[] = [];
-      if (!input.acquisition.volumetricT1) pendingItems.push("Sequência T1 volumétrica ausente — necessária para medir o hipocampo");
-      if (!input.acquisition.fullCoverage) pendingItems.push("Cobertura incompleta do encéfalo");
-      if (input.acquisition.motionArtifact === "grave") pendingItems.push("Artefato de movimento grave");
-      if (input.clinical.mmse === undefined && input.clinical.moca === undefined)
-        pendingItems.push("Nenhum teste cognitivo informado (MMSE ou MoCA)");
-
-      const createdAt = now.toISOString();
+      const nextNumber = Math.max(...db.cases.map((c) => Number(c.id.replace(/\D/g, "")) || 0), 1000) + 1;
+      const createdAt = new Date().toISOString();
       const newCase: ClinicalCase = {
         id: `caso-${nextNumber}`,
         patient: {
@@ -280,38 +204,20 @@ export const mockApi: Api = {
           name: input.patient.name,
           code: `PAC-${String(nextNumber - 600).padStart(4, "0")}`,
           birthDate: input.patient.birthDate,
-          age,
+          age: ageAt(input.patient.birthDate, input.examDate),
           sex: input.patient.sex,
           educationYears: input.patient.educationYears,
         },
-        status: pendingItems.length ? "pendencia" : "processando",
-        progress: pendingItems.length ? undefined : 0,
+        status: "processando",
         createdAt,
         updatedAt: createdAt,
         examDate: input.examDate,
-        requestedBy: user.role === "medico_clinico" ? user.name : "Dr. Marcos Andrade",
-        preparedBy: user.name,
-        acquisition: input.acquisition,
-        clinical: input.clinical,
-        pendingItems: pendingItems.length ? pendingItems : undefined,
-        priorExams: [],
-        addenda: [],
-        referrals: [],
-        audit: [
-          {
-            id: uid("ev"),
-            action: "caso_criado",
-            actor: user.name,
-            at: createdAt,
-            detail: `RM (${input.fileName}) e dados clínicos enviados. Identidade do paciente confirmada.`,
-          },
-        ],
+        createdBy: user.name,
+        tabular: input.tabular,
+        notes: input.notes,
       };
-      if (pendingItems.length) {
-        audit(newCase, "pendencia", "Sistema", `Análise bloqueada: ${pendingItems.length} item(ns) em aberto.`);
-      }
       db.cases.push(newCase);
-      if (newCase.status === "processando") db.processingStart[newCase.id] = Date.now();
+      db.processingStart[newCase.id] = Date.now();
       save();
       return clone(newCase);
     },
@@ -319,69 +225,15 @@ export const mockApi: Api = {
     async registerDecision(id, input) {
       await latency(500, 900);
       const user = currentUser();
-      if (!canDecide(user.role)) throw new ApiError("Seu perfil não pode registrar decisões clínicas.", 403, "forbidden");
       const c = findCase(id);
-      if (c.decision) {
-        throw new ApiError("Este caso já tem uma decisão registrada. Use um adendo para complementar.", 409, "conflict");
-      }
+      if (c.decision) throw new ApiError("Este caso já tem uma decisão registrada.", 409, "conflict");
       if (!c.prediction) throw new ApiError("O caso ainda não tem sugestão do modelo.", 422, "not_ready");
-      c.decision = { ...input, decidedBy: user.name, decidedAt: new Date().toISOString() };
+      const now = new Date().toISOString();
+      c.decision = { ...input, decidedBy: user.name, decidedAt: now };
       c.status = "concluido";
-      audit(c, "decisao_registrada", user.name, "Decisão registrada com justificativa.");
+      c.updatedAt = now;
       save();
       return clone(c);
-    },
-
-    async addAddendum(id, text) {
-      await latency(300, 600);
-      const user = currentUser();
-      const c = findCase(id);
-      c.addenda.push({ id: uid("ad"), text, author: user.name, createdAt: new Date().toISOString() });
-      audit(c, "adendo", user.name, "Adendo incluído na decisão.");
-      save();
-      return clone(c);
-    },
-
-    async refer(id, input) {
-      await latency(500, 900);
-      const user = currentUser();
-      const c = findCase(id);
-      if (c.status === "concluido") throw new ApiError("Casos concluídos não podem ser encaminhados.", 409, "conflict");
-      c.referrals.push({
-        id: uid("ref"),
-        ...input,
-        createdAt: new Date().toISOString(),
-        createdBy: user.name,
-        status: "aguardando",
-      });
-      c.status = "encaminhado";
-      audit(c, "encaminhado", user.name, `Encaminhado à ${input.specialty} (${input.urgency}).`);
-      save();
-      return clone(c);
-    },
-
-    async registerOpinion(id, referralId, input) {
-      await latency(500, 900);
-      const user = currentUser();
-      const c = findCase(id);
-      const referral = c.referrals.find((r) => r.id === referralId);
-      if (!referral) throw new ApiError("Encaminhamento não encontrado.", 404, "not_found");
-      referral.status = "respondido";
-      referral.opinion = { ...input, date: input.date ?? new Date().toISOString() };
-      if (c.status === "encaminhado") c.status = "aguardando_revisao";
-      audit(c, "parecer_registrado", user.name, `Parecer de ${input.author} (${input.channel}) registrado.`);
-      save();
-      return clone(c);
-    },
-
-    async logEvent(id, action) {
-      const user = currentUser();
-      const c = findCase(id);
-      const last = c.audit[c.audit.length - 1];
-      // Evita poluir a trilha com aberturas repetidas em sequência.
-      if (action === "caso_aberto" && last?.action === "caso_aberto" && last.actor === user.name) return;
-      audit(c, action, user.name, action === "caso_aberto" ? "Caso revisado." : "Relatório exportado.");
-      save();
     },
   },
 

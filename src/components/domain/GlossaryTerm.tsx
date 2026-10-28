@@ -1,11 +1,10 @@
-import { Link } from "react-router-dom";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { GLOSSARY_BY_ID } from "@/lib/glossary";
 import { cn } from "@/lib/utils";
 
 /**
  * Termo técnico com explicação contextual no próprio lugar onde aparece —
- * princípio de "citação embutida" (RC09, iatroX) aplicado ao glossário (F08).
+ * princípio de "citação embutida" aplicado ao glossário.
  */
 export function GlossaryTerm({
   id,
@@ -41,12 +40,6 @@ export function GlossaryTerm({
             {entry.aka && <span className="font-normal text-muted-foreground"> · {entry.aka}</span>}
           </p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{entry.short}</p>
-          <Link
-            to={`/app/glossario#${entry.id}`}
-            className="mt-2 inline-block text-xs font-medium text-primary hover:underline"
-          >
-            Ver no glossário →
-          </Link>
           <TooltipPrimitive.Arrow className="fill-card" />
         </TooltipPrimitive.Content>
       </TooltipPrimitive.Portal>

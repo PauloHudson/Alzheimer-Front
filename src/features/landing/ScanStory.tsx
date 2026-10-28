@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Prediction } from "@/types";
+import type { ShowcasePrediction as Prediction } from "./showcase/types";
 import { cn, clamp } from "@/lib/utils";
-import { CLASS_INFO } from "@/lib/domain";
-import { MRI_SIZE, renderHeatmap, renderSlice } from "@/features/viewer/renderMri";
+import { CLASS_INFO, CONFIDENCE_INFO } from "@/lib/domain";
+import { MRI_SIZE, renderHeatmap, renderSlice } from "./showcase/renderMri";
 
 /**
  * Narrativa guiada pela rolagem: a RM fica fixa enquanto o texto passa, e a rolagem
- * percorre os cortes coronais, acende o mapa de atenção, nomeia as regiões e, por fim,
- * mostra a sugestão e a decisão. É a explicação em camadas (RC08) contada em sequência.
+ * percorre os cortes coronais, acende o mapa de atenção, mostra o peso de cada modalidade
+ * e, por fim, a sugestão e a decisão. É a explicação em camadas contada em sequência.
  */
 
 const SLICE_FROM = 6;
@@ -16,30 +16,24 @@ const SLICE_TO = 21; // corte que passa pelos hipocampos
 const STEPS = [
   {
     title: "A ressonância",
-    text: "Cortes coronais da RM T1 volumétrica, do occipital até os hipocampos. É o mesmo exame que hoje chega com um laudo em texto livre.",
+    text: "O sistema extrai do exame T1 o corte que o modelo analisa.",
   },
   {
     title: "Onde o modelo olhou",
-    text: "O mapa de atenção mostra as regiões que mais pesaram na sugestão. A opacidade é ajustável, para conferir a anatomia por baixo do destaque.",
+    text: "O mapa de atenção destaca as áreas que mais pesaram.",
   },
   {
-    title: "O que isso significa",
-    text: "Cada região vira uma medida com significado clínico, comparada a pessoas da mesma idade e sexo. Volume hipocampal no percentil 9 diz mais que uma mancha vermelha.",
+    title: "Imagem e clínica juntas",
+    text: "Você vê quanto veio da imagem e quanto dos dados clínicos.",
   },
   {
     title: "Quanto confiar",
-    text: "A sugestão vem com a probabilidade de cada classe e uma faixa de confiança. O número nunca aparece sozinho.",
+    text: "Probabilidade de cada classe, sempre com uma faixa de confiança.",
   },
   {
     title: "A decisão é sua",
-    text: "Concorde, ajuste ou discorde. A justificativa parte das evidências que você marcou e fica registrada sem possibilidade de edição.",
+    text: "Concorde ou discorde, com justificativa registrada.",
   },
-];
-
-const LABELS = [
-  { id: "hipocampo-esquerdo", x: 0.63, y: 0.64, side: "right" as const, text: "Hipocampo E", value: "2,98 cm³ · p9" },
-  { id: "hipocampo-direito", x: 0.37, y: 0.64, side: "left" as const, text: "Hipocampo D", value: "3,18 cm³ · p16" },
-  { id: "ventriculos", x: 0.55, y: 0.38, side: "right" as const, text: "Ventrículos", value: "41 cm³ · p66" },
 ];
 
 const ease = (t: number) => 1 - (1 - t) ** 3;
@@ -56,7 +50,14 @@ function useNarrow() {
   return narrow;
 }
 
-export function ScanStory({ prediction }: { prediction: Prediction }) {
+export function ScanStory({
+  prediction,
+  share,
+}: {
+  prediction: Prediction;
+  /** Fração da atribuição vinda da imagem e dos dados clínicos. */
+  share: { image: number; tabular: number };
+}) {
   const sectionRef = useRef<HTMLDivElement>(null);
   const baseRef = useRef<HTMLCanvasElement>(null);
   const heatRef = useRef<HTMLCanvasElement>(null);
@@ -107,7 +108,7 @@ export function ScanStory({ prediction }: { prediction: Prediction }) {
   const decision = ramp(progress, 0.82, 0.9);
   // em telas estreitas não há espaço para empilhar camadas: cada uma substitui a anterior
   const summary = ramp(progress, 0.62, 0.72) * (narrow ? 1 - decision : 1);
-  const labels = ramp(progress, 0.42, 0.52) * (narrow ? 1 - ramp(progress, 0.6, 0.66) : 1);
+  const modality = ramp(progress, 0.42, 0.52) * (narrow ? 1 - ramp(progress, 0.6, 0.66) : 1);
 
   useEffect(() => {
     baseRef.current?.getContext("2d")?.putImageData(renderSlice("coronal", slice, 0.45), 0, 0);
@@ -141,47 +142,33 @@ export function ScanStory({ prediction }: { prediction: Prediction }) {
                 <br />
                 CORTE {String(slice + 1).padStart(2, "0")}/48
               </span>
-              <span className="text-right text-amber-300/80">
-                IMAGEM SINTÉTICA
-                <br />
-                DEMONSTRAÇÃO
-              </span>
             </div>
             <span className="absolute left-4 top-1/2 font-mono text-xs text-white/60">D</span>
             <span className="absolute right-4 top-1/2 font-mono text-xs text-white/60">E</span>
           </div>
 
-          {/* rótulos das regiões, com linha de chamada */}
-          {LABELS.map((label) => (
-            <div
-              key={label.id}
-              className="pointer-events-none absolute"
-              style={{
-                left: `${label.x * 100}%`,
-                top: `${label.y * 100}%`,
-                opacity: labels,
-                transform: `translateY(${(1 - labels) * 6}px)`,
-              }}
-            >
-              <span className="absolute size-2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white bg-amber-400" />
-              <span
-                className={cn(
-                  "absolute top-0 h-px bg-white/70",
-                  label.side === "right" ? "left-1" : "right-1",
-                )}
-                style={{ width: `${labels * 18}%`, minWidth: labels ? 28 : 0 }}
-              />
-              <span
-                className={cn(
-                  "absolute -translate-y-1/2 whitespace-nowrap rounded-md bg-black/75 px-2 py-1 font-mono text-[10px] leading-tight text-white backdrop-blur sm:text-[11px]",
-                  label.side === "right" ? "left-9" : "right-9 text-right",
-                )}
-              >
-                {label.text}
-                <span className="block text-amber-300">{label.value}</span>
+          {/* peso de cada modalidade */}
+          <div
+            className="absolute left-3 top-[12%] w-52 rounded-2xl bg-white p-4 text-slate-900 shadow-2xl sm:left-5 sm:w-60"
+            style={{ opacity: modality, transform: `translateX(${(modality - 1) * 16}px)` }}
+            aria-hidden={modality < 0.5}
+          >
+            <p className="font-mono text-[10px] uppercase tracking-wider text-slate-500">De onde veio a sugestão</p>
+            <div className="mt-3 flex h-2 overflow-hidden rounded-full bg-slate-100">
+              <span className="bg-[#2f4ac0]" style={{ width: `${share.image * 100 * modality}%` }} />
+              <span className="bg-[#0d9488]" style={{ width: `${share.tabular * 100 * modality}%` }} />
+            </div>
+            <div className="mt-2.5 flex justify-between font-mono text-[11px]">
+              <span>
+                <span className="text-slate-500">Imagem </span>
+                {Math.round(share.image * 100)}%
+              </span>
+              <span>
+                <span className="text-slate-500">Clínica </span>
+                {Math.round(share.tabular * 100)}%
               </span>
             </div>
-          ))}
+          </div>
 
           {/* sugestão */}
           <div
@@ -194,7 +181,7 @@ export function ScanStory({ prediction }: { prediction: Prediction }) {
               {suggested.label}
             </p>
             <div className="mt-3 space-y-1.5">
-              {(["CN", "MCI", "AD"] as const).map((k) => (
+              {(["CN", "AD"] as const).map((k) => (
                 <div key={k} className="flex items-center gap-2 font-mono text-[11px]">
                   <span className="w-7 text-slate-500">{CLASS_INFO[k].short}</span>
                   <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100">
@@ -210,7 +197,7 @@ export function ScanStory({ prediction }: { prediction: Prediction }) {
                 </div>
               ))}
             </div>
-            <p className="mt-2 text-xs text-amber-700">Confiança moderada</p>
+            <p className="mt-2 text-xs text-slate-600">{CONFIDENCE_INFO[prediction.confidence].label}</p>
           </div>
 
           {/* decisão */}
