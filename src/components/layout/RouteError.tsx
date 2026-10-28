@@ -27,7 +27,7 @@ export function RouteError() {
           Recarregar
         </Button>
         <Button asChild>
-          <Link to="/app">Voltar ao painel</Link>
+          <Link to="/app">Voltar aos casos</Link>
         </Button>
       </div>
     </div>

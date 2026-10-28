@@ -7,11 +7,9 @@ import { AlertCircle, Clock, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Field } from "@/components/ui/label";
-import { Avatar } from "@/components/ui/misc";
 import { api, USE_MOCK } from "@/services/api";
-import { DEMO_PASSWORD, SEED_USERS } from "@/services/mock/seed";
+import { DEMO_PASSWORD, DEMO_USER } from "@/services/mock/seed";
 import { useAuth } from "@/store/auth";
-import { ROLE_INFO } from "@/lib/domain";
 import { PasswordInput } from "./PasswordInput";
 
 const schema = z.object({
@@ -45,8 +43,8 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemo = (email: string) => {
-    setValue("email", email, { shouldValidate: true });
+  const fillDemo = () => {
+    setValue("email", DEMO_USER.email, { shouldValidate: true });
     setValue("password", DEMO_PASSWORD, { shouldValidate: true });
     setError(null);
   };
@@ -93,11 +91,6 @@ export default function LoginPage() {
             {...register("password")}
           />
         </Field>
-        <div className="flex justify-end">
-          <Link to="/recuperar-senha" className="text-sm font-medium text-primary hover:underline">
-            Esqueci minha senha
-          </Link>
-        </div>
         <Button type="submit" className="w-full" size="lg" loading={isSubmitting}>
           {!isSubmitting && <LogIn />} Entrar
         </Button>
@@ -106,34 +99,24 @@ export default function LoginPage() {
       <p className="text-center text-sm text-muted-foreground">
         Não tem conta?{" "}
         <Link to="/cadastro" className="font-medium text-primary hover:underline">
-          Solicitar acesso
+          Criar conta
         </Link>
       </p>
 
       {USE_MOCK && (
-        <div className="rounded-xl border bg-card p-4 shadow-card">
-          <p className="text-sm font-medium">Contas de demonstração</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Clique em um perfil para preencher. Senha: <code className="font-mono">{DEMO_PASSWORD}</code>
-          </p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            {SEED_USERS.map((user) => (
-              <button
-                key={user.id}
-                type="button"
-                onClick={() => fillDemo(user.email)}
-                className="flex items-center gap-2.5 rounded-lg border p-2.5 text-left transition-colors hover:border-primary/40 hover:bg-primary-soft/40"
-              >
-                <Avatar name={user.name} className="size-8 text-xs" />
-                <span className="min-w-0 leading-tight">
-                  <span className="block truncate text-sm font-medium">{user.name.replace(/^Dra?\. /, "")}</span>
-                  <span className="block text-xs text-muted-foreground">{ROLE_INFO[user.role].short}</span>
-                </span>
-              </button>
-            ))}
+        <div className="flex items-center justify-between gap-3 rounded-xl border bg-card p-4 shadow-card">
+          <div>
+            <p className="text-sm font-medium">Conta de demonstração</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              <code className="font-mono">{DEMO_USER.email}</code> · senha <code className="font-mono">{DEMO_PASSWORD}</code>
+            </p>
           </div>
+          <Button type="button" variant="outline" size="sm" onClick={fillDemo}>
+            Preencher
+          </Button>
         </div>
       )}
     </div>
   );
 }
+

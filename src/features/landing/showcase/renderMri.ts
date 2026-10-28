@@ -1,4 +1,4 @@
-import type { AttentionRegion, Plane } from "@/types";
+import type { AttentionRegion, Plane } from "./types";
 import { ANATOMY } from "./anatomy";
 
 /**

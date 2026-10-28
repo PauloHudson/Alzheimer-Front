@@ -9,13 +9,10 @@ import { RouteError } from "@/components/layout/RouteError";
 const LandingPage = lazy(() => import("@/features/landing/LandingPage"));
 const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/features/auth/RegisterPage"));
-const ForgotPasswordPage = lazy(() => import("@/features/auth/ForgotPasswordPage"));
-const DashboardPage = lazy(() => import("@/features/dashboard/DashboardPage"));
 const CasesPage = lazy(() => import("@/features/cases/CasesPage"));
 const CaseDetailPage = lazy(() => import("@/features/case-detail/CaseDetailPage"));
 const ReportPage = lazy(() => import("@/features/case-detail/ReportPage"));
 const NewCasePage = lazy(() => import("@/features/new-case/NewCasePage"));
-const GlossaryPage = lazy(() => import("@/features/glossary/GlossaryPage"));
 const NotFoundPage = lazy(() => import("@/components/layout/NotFoundPage"));
 
 function PageLoader() {
@@ -57,7 +54,6 @@ export const router = createBrowserRouter([
             children: [
               { path: "/entrar", element: withSuspense(<LoginPage />) },
               { path: "/cadastro", element: withSuspense(<RegisterPage />) },
-              { path: "/recuperar-senha", element: withSuspense(<ForgotPasswordPage />) },
             ],
           },
         ],
@@ -70,11 +66,10 @@ export const router = createBrowserRouter([
           {
             element: <AppShell />,
             children: [
-              { index: true, element: withSuspense(<DashboardPage />) },
-              { path: "casos", element: withSuspense(<CasesPage />) },
+              { index: true, element: withSuspense(<CasesPage />) },
+              { path: "casos", element: <Navigate to="/app" replace /> },
               { path: "casos/novo", element: withSuspense(<NewCasePage />) },
               { path: "casos/:id", element: withSuspense(<CaseDetailPage />) },
-              { path: "glossario", element: withSuspense(<GlossaryPage />) },
             ],
           },
         ],

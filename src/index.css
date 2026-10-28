@@ -1,10 +1,13 @@
 @import "tailwindcss";
 @import "lenis/dist/lenis.css";
 
+/* modo noturno por classe no <html> (ver src/store/theme.ts) */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
  * Tokens de design.
- * A interface é clara por padrão (áreas de dados e texto) e escura apenas na
- * área de visualização da RM — decisão RC02 da Entrega 2 (OHIF × Glass Health).
+ * Tema claro por padrão, com modo noturno em :root.dark. A área de
+ * visualização da RM é escura nos dois temas.
  *
  * Tipografia: Plex Sans (corpo, legível em telas clínicas), Plex Mono (dados e
  * rótulos no estilo dos cabeçalhos DICOM) e Instrument Serif apenas em títulos de vitrine.
@@ -67,6 +70,11 @@
   --animate-scale-in: scale-in 0.18s ease-out;
   --animate-slide-in-right: slide-in-right 0.25s ease-out;
   --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
+  --animate-float: float 7s ease-in-out infinite;
+  --animate-drift: drift 18s ease-in-out infinite alternate;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-collapsible-down: collapsible-down 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-collapsible-up: collapsible-up 0.24s ease-in;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -88,6 +96,74 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.55; }
   }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes drift {
+    from { transform: translate3d(-4%, -3%, 0) scale(1); }
+    to { transform: translate3d(5%, 4%, 0) scale(1.12); }
+  }
+  @keyframes collapsible-down {
+    from { height: 0; opacity: 0; }
+    to { height: var(--radix-collapsible-content-height); opacity: 1; }
+  }
+  @keyframes collapsible-up {
+    from { height: var(--radix-collapsible-content-height); opacity: 1; }
+    to { height: 0; opacity: 0; }
+  }
+  @keyframes shimmer {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
+  }
+}
+
+/* Tokens do modo noturno: mesmas funções, contraste recalibrado para fundo escuro. */
+@layer theme {
+  :root.dark {
+    color-scheme: dark;
+    /* grafite neutro com destaque roxo e ciano (estrutura inspirada no Dashdark) */
+    --color-background: #0c0c0e;
+    --color-foreground: #fafafa;
+    --color-card: #151518;
+    --color-card-foreground: #fafafa;
+    --color-muted: #1d1d21;
+    --color-muted-foreground: #a1a1aa;
+    --color-border: #26262b;
+    --color-input: #303036;
+    --color-ring: #c084fc;
+
+    --color-primary: #a855f7;
+    --color-primary-hover: #b875f9;
+    --color-primary-foreground: #ffffff;
+    --color-primary-soft: #241a31;
+
+    --color-accent: #22d3ee;
+    --color-accent-soft: #0d2a30;
+
+    --color-destructive: #f87171;
+    --color-destructive-soft: #2c1517;
+    --color-success: #4ade80;
+    --color-success-soft: #12251a;
+    --color-warning: #fbbf24;
+    --color-warning-soft: #2a2110;
+
+    --color-cn: #4ade80;
+    --color-cn-soft: #12251a;
+    --color-mci: #fbbf24;
+    --color-mci-soft: #2a2110;
+    --color-ad: #fb7185;
+    --color-ad-soft: #2c1520;
+
+    --shadow-card: 0 0 0 transparent;
+    --shadow-elevated: 0 16px 40px -16px rgb(0 0 0 / 0.7);
+
+    --color-viewer: #0a0a0b;
+    --color-viewer-panel: #131315;
+    --color-viewer-border: #26262b;
+    --color-viewer-foreground: #fafafa;
+    --color-viewer-muted: #8e8e96;
+  }
 }
 
 @layer base {
@@ -107,6 +183,7 @@
   }
 
   body {
+    transition: background-color 0.25s ease, color 0.25s ease;
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);

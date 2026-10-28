@@ -1,23 +1,17 @@
 /**
  * Tipos de domínio da interface M-XAI.
  *
- * Estes tipos são o contrato esperado entre o front-end e o futuro backend.
- * Os nomes seguem o vocabulário clínico das Entregas 1–5 (signos do usuário),
- * não estruturas internas do modelo.
+ * Estes tipos são o contrato entre o front-end e a API de inferência. Eles
+ * espelham o que o pipeline de treino (`Back/…/src/multimodal`) consegue
+ * produzir hoje — nada aqui exige uma saída que o modelo ainda não gera.
  */
 
 // ---------------------------------------------------------------- usuários
-
-export type Role = "medico_clinico" | "neurologista" | "radiologista" | "tecnico";
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: Role;
-  /** Registro profissional (CRM para médicos, CRTR para técnicos). */
-  registry: string;
-  institution: string;
 }
 
 export interface AuthSession {
@@ -35,13 +29,11 @@ export interface RegisterInput {
   name: string;
   email: string;
   password: string;
-  role: Role;
-  registry: string;
-  institution: string;
 }
 
 // ---------------------------------------------------------------- pacientes
 
+/** O backend usa `Female`/`Male` (PTGENDER da ADNI); a API faz a conversão. */
 export type Sex = "F" | "M";
 
 export interface Patient {
@@ -50,9 +42,38 @@ export interface Patient {
   /** Identificador pseudonimizado exibido em listas (LGPD — minimização). */
   code: string;
   birthDate: string;
+  /** Idade na data do exame — coluna `age` do modelo. */
   age: number;
   sex: Sex;
+  /** Coluna `educ` do modelo. */
   educationYears: number;
+}
+
+// ---------------------------------------------------------------- entradas tabulares
+
+/** Genótipo APOE no formato da ADNI (coluna `apoe`; o backend deriva `apoe4_alleles`). */
+export type ApoeGenotype = "ε2/ε2" | "ε2/ε3" | "ε2/ε4" | "ε3/ε3" | "ε3/ε4" | "ε4/ε4";
+
+/** Estado civil no formato da ADNI (coluna `marital`, MARISTAT). */
+export type MaritalStatus = "Married" | "Widowed" | "Divorced" | "Never married" | "Unknown";
+
+/**
+ * Variáveis clínicas que entram no ramo tabular, além de idade, sexo e
+ * escolaridade (que vêm do paciente). Escores cognitivos (MMSE, MoCA, CDR)
+ * ficam de fora de propósito: o rótulo da ADNI é derivado deles.
+ *
+ * Tudo é opcional — o pipeline imputa valores ausentes (KNNImputer).
+ */
+export interface TabularInput {
+  apoe?: ApoeGenotype;
+  marital?: MaritalStatus;
+  /**
+   * Volumetria do FreeSurfer, em mm³. O backend normaliza pelo ICV para obter
+   * `etiv`, `hippocampus_norm` e `ventricle_norm`.
+   */
+  icvMm3?: number;
+  hippocampusMm3?: number;
+  lateralVentriclesMm3?: number;
 }
 
 // ---------------------------------------------------------------- modelo
@@ -62,106 +83,43 @@ export type DiagnosticClass = "CN" | "MCI" | "AD";
 
 export type ConfidenceBand = "baixa" | "moderada" | "alta";
 
-export type Modality = "imagem" | "clinico";
+export type Architecture = "late_fusion" | "early_fusion" | "image_only" | "tabular_only";
 
-export type Plane = "axial" | "coronal" | "sagittal";
-
-/** Posição de uma região em um plano: coordenadas normalizadas 0–1 e faixa de cortes (0–1) onde aparece. */
-export interface RegionAnchor {
-  x: number;
-  y: number;
-  slice: [number, number];
-}
-
-/** Região destacada pelo mapa de atenção (Grad-CAM). */
-export interface AttentionRegion {
-  id: string;
-  label: string;
-  /** Peso relativo da região na sugestão (0–1). */
-  weight: number;
-  /** Raio do destaque, em fração da largura da imagem. */
-  radius: number;
-  anchors: Partial<Record<Plane, RegionAnchor>>;
-  description: string;
-}
-
-/** Contribuição de um fator para a sugestão (SHAP), já traduzida para linguagem clínica. */
-export interface FeatureContribution {
-  id: string;
-  label: string;
-  modality: Modality;
-  value: string;
-  reference?: string;
-  /** Positivo = aproxima da classe sugerida; negativo = afasta. */
-  contribution: number;
-  explanation: string;
-  source: string;
-}
-
-/** Biomarcador derivado da imagem e comparado a uma referência normativa (abordagem Feature-Augmented). */
-export interface Biomarker {
-  id: string;
-  label: string;
-  value: number;
-  unit: string;
-  /** Percentil para idade e sexo na população de referência. */
-  percentile: number;
-  referenceRange: string;
-  interpretation: string;
+/**
+ * Grad-CAM da `layer4` da ResNet50 sobre o corte axial que entrou na CNN.
+ * Ambas as imagens têm o mesmo tamanho (224×224).
+ */
+export interface GradCam {
+  /** Corte axial no nível ventricular, já pré-processado (PNG em tons de cinza; URL ou data URI). */
+  sliceUrl: string;
+  /** Mapa normalizado em [0, 1] como PNG em tons de cinza (0 = preto, 1 = branco). A interface aplica a paleta. */
+  heatmapUrl: string;
+  /** Classe cujo logit foi explicado (o pipeline explica sempre AD). */
+  explainedClass: DiagnosticClass;
 }
 
 export interface Prediction {
   modelVersion: string;
+  architecture: Architecture;
   generatedAt: string;
+  /** Classes do modelo na ordem de saída — `["CN", "AD"]` no binário atual, `["CN", "MCI", "AD"]` no de 3 classes. */
+  classes: DiagnosticClass[];
+  probabilities: Partial<Record<DiagnosticClass, number>>;
   suggested: DiagnosticClass;
-  probabilities: Record<DiagnosticClass, number>;
-  confidence: ConfidenceBand;
-  summary: string;
-  regions: AttentionRegion[];
-  features: FeatureContribution[];
-  biomarkers: Biomarker[];
+  /** Ausente em `tabular_only`, que não tem ramo de imagem. */
+  gradcam?: GradCam;
+  /**
+   * Fração da atribuição SHAP (|SHAP|) na entrada da MLP de fusão. Só existe
+   * nas arquiteturas de fusão. Soma 1.
+   */
+  modalityShare?: { image: number; tabular: number };
   /** Avisos específicos do caso (qualidade, fora da distribuição de treino etc.). */
   caveats: string[];
 }
 
 // ---------------------------------------------------------------- caso clínico
 
-export type CaseStatus =
-  | "processando"
-  | "pendencia"
-  | "aguardando_revisao"
-  | "encaminhado"
-  | "concluido";
-
-export type AcquisitionArtifact = "nenhum" | "leve" | "grave";
-
-export interface AcquisitionQuality {
-  volumetricT1: boolean;
-  fullCoverage: boolean;
-  motionArtifact: AcquisitionArtifact;
-  notes?: string;
-}
-
-export interface ClinicalData {
-  mmse?: number;
-  moca?: number;
-  cdrSb?: number;
-  familyHistory: boolean;
-  chiefComplaint: string;
-  clinicalQuestion: string;
-  familyReport?: string;
-}
-
-/** Exame anterior do mesmo paciente, usado na comparação longitudinal (F05). */
-export interface PriorExam {
-  id: string;
-  date: string;
-  mmse?: number;
-  moca?: number;
-  hippocampalVolume?: number;
-  suggested?: DiagnosticClass;
-  finalDiagnosis?: FinalDiagnosis;
-}
+export type CaseStatus = "processando" | "erro" | "aguardando_revisao" | "concluido";
 
 export type FinalDiagnosis = DiagnosticClass | "inconclusivo";
 
@@ -170,65 +128,9 @@ export type Agreement = "concorda" | "ajusta" | "discorda";
 export interface Decision {
   agreement: Agreement;
   finalDiagnosis: FinalDiagnosis;
-  conduct: string;
   justification: string;
-  /** IDs de fatores/regiões que o médico usou como evidência. */
-  evidenceIds: string[];
   decidedBy: string;
   decidedAt: string;
-}
-
-export interface Addendum {
-  id: string;
-  text: string;
-  author: string;
-  createdAt: string;
-}
-
-export type ReferralUrgency = "rotina" | "prioritario" | "urgente";
-export type OpinionChannel = "sistema" | "telefone" | "presencial";
-
-/** Parecer de especialista registrado de forma estruturada (H06 / cenário C02). */
-export interface SpecialistOpinion {
-  author: string;
-  specialty: string;
-  channel: OpinionChannel;
-  date: string;
-  conclusion: string;
-  criteria: string[];
-  recommendation: string;
-}
-
-export interface Referral {
-  id: string;
-  specialty: string;
-  specialist?: string;
-  reason: string;
-  question: string;
-  urgency: ReferralUrgency;
-  createdAt: string;
-  createdBy: string;
-  status: "aguardando" | "respondido";
-  opinion?: SpecialistOpinion;
-}
-
-export type AuditAction =
-  | "caso_criado"
-  | "analise_concluida"
-  | "caso_aberto"
-  | "decisao_registrada"
-  | "adendo"
-  | "encaminhado"
-  | "parecer_registrado"
-  | "relatorio_exportado"
-  | "pendencia";
-
-export interface AuditEvent {
-  id: string;
-  action: AuditAction;
-  actor: string;
-  at: string;
-  detail: string;
 }
 
 export interface ClinicalCase {
@@ -238,50 +140,27 @@ export interface ClinicalCase {
   createdAt: string;
   updatedAt: string;
   examDate: string;
-  requestedBy: string;
-  preparedBy: string;
-  acquisition: AcquisitionQuality;
-  clinical: ClinicalData;
+  createdBy: string;
+  tabular: TabularInput;
+  /** Observações livres; não entram no modelo. */
+  notes?: string;
   prediction?: Prediction;
-  /** 0–100 enquanto status = "processando". */
-  progress?: number;
-  pendingItems?: string[];
-  priorExams: PriorExam[];
+  /** Mensagem do backend quando status = "erro" (ex.: falha no skull strip). */
+  error?: string;
   decision?: Decision;
-  addenda: Addendum[];
-  referrals: Referral[];
-  audit: AuditEvent[];
 }
 
-/** Versão resumida usada em listas e no painel. */
-export type CaseSummary = Pick<
-  ClinicalCase,
-  "id" | "status" | "createdAt" | "updatedAt" | "examDate" | "requestedBy" | "progress"
-> & {
+/** Versão resumida usada na lista de casos. */
+export type CaseSummary = Pick<ClinicalCase, "id" | "status" | "createdAt" | "updatedAt" | "examDate"> & {
   patient: Pick<Patient, "id" | "name" | "code" | "age" | "sex">;
   suggested?: DiagnosticClass;
-  confidence?: ConfidenceBand;
-  topProbability?: number;
+  probabilities?: Prediction["probabilities"];
   finalDiagnosis?: FinalDiagnosis;
-  agreement?: Agreement;
-  hasOpinion: boolean;
-  pendingCount: number;
 };
 
 export interface CaseFilters {
   search?: string;
   status?: CaseStatus | "todos";
-  suggested?: DiagnosticClass | "todos";
-}
-
-export interface DashboardStats {
-  awaitingReview: number;
-  processing: number;
-  referred: number;
-  pending: number;
-  completedThisMonth: number;
-  agreement: Record<Agreement, number>;
-  bySuggestion: Record<DiagnosticClass, number>;
 }
 
 // ---------------------------------------------------------------- entradas
@@ -294,27 +173,14 @@ export interface NewCaseInput {
     educationYears: number;
   };
   examDate: string;
-  fileName: string;
-  fileSizeMb: number;
-  acquisition: AcquisitionQuality;
-  clinical: ClinicalData;
-  identityConfirmed: boolean;
+  tabular: TabularInput;
+  notes?: string;
+  /** Série T1 (DICOM zipado ou NIfTI). Vai como multipart no campo `mri`. */
+  mri: File;
 }
 
 export interface DecisionInput {
   agreement: Agreement;
   finalDiagnosis: FinalDiagnosis;
-  conduct: string;
   justification: string;
-  evidenceIds: string[];
 }
-
-export interface ReferralInput {
-  specialty: string;
-  specialist?: string;
-  reason: string;
-  question: string;
-  urgency: ReferralUrgency;
-}
-
-export type OpinionInput = Omit<SpecialistOpinion, "date"> & { date?: string };

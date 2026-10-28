@@ -12,7 +12,7 @@ import {
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
-import type { AttentionRegion, Plane } from "@/types";
+import type { AttentionRegion, Plane } from "./types";
 import { cn, clamp } from "@/lib/utils";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/misc";
@@ -323,9 +323,6 @@ export function MriViewer({
               <p>
                 Corte {slice + 1}/{SLICE_COUNT}
               </p>
-            </div>
-            <div className="absolute right-2 top-2 text-right">
-              <p className="rounded bg-amber-400/15 px-1.5 py-0.5 text-amber-300">Imagem sintética · demonstração</p>
             </div>
             <div className="absolute bottom-2 left-2 space-y-0.5">
               <p>Zoom {zoom.toFixed(2)}×</p>

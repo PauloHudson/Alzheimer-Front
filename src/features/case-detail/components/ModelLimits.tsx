@@ -1,34 +1,28 @@
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import type { Prediction } from "@/types";
 import { GlossaryTerm } from "@/components/domain/GlossaryTerm";
+import { ARCHITECTURE_LABEL } from "@/lib/domain";
 import { formatDateTime } from "@/lib/utils";
 
-/** Limites de generalização declarados na própria interface (RC11). */
+/** Limites de generalização declarados na própria interface, conforme a seção 7 do README do backend. */
 export function ModelLimits({ prediction }: { prediction: Prediction }) {
   return (
-    <div className="space-y-3">
-      {prediction.caveats.length > 0 && (
-        <ul className="space-y-2">
-          {prediction.caveats.map((caveat) => (
-            <li
-              key={caveat}
-              className="flex gap-2.5 rounded-lg border border-warning/30 bg-warning-soft p-3 text-sm text-warning"
-            >
-              <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-              <span className="leading-relaxed">{caveat}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      <div className="flex gap-2.5 rounded-lg bg-muted/60 p-3 text-xs leading-relaxed text-muted-foreground">
-        <Info className="mt-0.5 size-4 shrink-0" />
-        <p>
-          Modelo <strong className="font-medium text-foreground">{prediction.modelVersion}</strong>, treinado com dados
-          do <GlossaryTerm id="adni">ADNI</GlossaryTerm> (população majoritariamente norte-americana, 55–90 anos, alta
-          escolaridade). Não validado na população brasileira. Sugestão gerada em{" "}
-          {formatDateTime(prediction.generatedAt)}.
+    <div className="space-y-3 text-sm">
+      {prediction.caveats.map((caveat) => (
+        <p key={caveat} className="flex gap-2 rounded-lg bg-warning-soft px-3 py-2 text-warning">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+          {caveat}
         </p>
-      </div>
+      ))}
+      <ul className="space-y-1.5 text-muted-foreground">
+        <li>
+          Treinado no <GlossaryTerm id="adni">ADNI</GlossaryTerm>; não validado no Brasil.
+        </li>
+        {!prediction.classes.includes("MCI") && <li>Distingue só CN e DA; não avalia CCL.</li>}
+      </ul>
+      <p className="border-t pt-3 text-xs text-muted-foreground">
+        {ARCHITECTURE_LABEL[prediction.architecture]} · {formatDateTime(prediction.generatedAt)}
+      </p>
     </div>
   );
 }
