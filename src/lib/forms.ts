@@ -9,7 +9,7 @@ export function focusFirstError(container: HTMLElement | null) {
     if (!alert) return;
     const target =
       alert.parentElement?.querySelector<HTMLElement>(
-        '[aria-invalid="true"], button[role="radio"], button[role="checkbox"], input, textarea, select, button',
+        '[aria-invalid="true"], button[role="radio"], button[role="checkbox"], input, textarea, select, button:not([data-field-info])',
       ) ?? null;
     target?.focus({ preventScroll: true });
     alert.scrollIntoView({ block: "center", behavior: "smooth" });

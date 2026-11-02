@@ -162,3 +162,21 @@ export const MARITAL_LABEL: Record<MaritalStatus, string> = {
 export function apoe4Alleles(genotype: ApoeGenotype) {
   return (genotype.match(/4/g) ?? []).length;
 }
+
+/**
+ * Faixas aceitas nos campos numéricos do novo caso.
+ * PROVISÓRIO: valores plausíveis para adultos, a confirmar com a rota `GET /campos` da API do modelo.
+ */
+export const INPUT_LIMITS = {
+  educationYears: { min: 0, max: 30, unit: "anos" },
+  icvMm3: { min: 1_000_000, max: 2_200_000, unit: "mm³" },
+  hippocampusMm3: { min: 2_000, max: 12_000, unit: "mm³" },
+  lateralVentriclesMm3: { min: 2_000, max: 250_000, unit: "mm³" },
+} as const;
+
+export type LimitedInput = keyof typeof INPUT_LIMITS;
+
+export function formatLimit(field: LimitedInput) {
+  const { min, max, unit } = INPUT_LIMITS[field];
+  return `${min.toLocaleString("pt-BR")} a ${max.toLocaleString("pt-BR")} ${unit}`;
+}

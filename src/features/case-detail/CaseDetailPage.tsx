@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Calendar, ClipboardList, FileText, ShieldAlert, UserRound } from "lucide-react";
+import { ArrowLeft, Calendar, ClipboardList, ShieldAlert, UserRound } from "lucide-react";
 import type { ClinicalCase } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,13 +81,6 @@ export default function CaseDetailPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {prediction && (
-              <Button variant="outline" asChild>
-                <Link to={`/app/casos/${data.id}/relatorio`} target="_blank" rel="noopener">
-                  <FileText /> Relatório
-                </Link>
-              </Button>
-            )}
             {prediction && !data.decision && (
               <Button asChild>
                 <a href="#decisao">Registrar decisão</a>
@@ -97,7 +90,7 @@ export default function CaseDetailPage() {
         </div>
       </div>
 
-      {data.status === "processando" && <ProcessingState />}
+      {data.status === "processando" && <ProcessingState data={data} />}
       {data.status === "erro" && <FailedState data={data} />}
 
       {/* --------------------------------------------------------- explicação */}

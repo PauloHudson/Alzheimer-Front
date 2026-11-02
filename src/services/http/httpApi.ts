@@ -1,5 +1,5 @@
 import type { Api } from "../contract";
-import { request } from "./client";
+import { request, upload } from "./client";
 import type { AuthSession, CaseSummary, ClinicalCase } from "@/types";
 
 /**
@@ -21,12 +21,12 @@ export const httpApi: Api = {
         },
       }),
     get: (id) => request<ClinicalCase>("GET", `/cases/${id}`),
-    create: ({ mri, ...data }) => {
+    create: ({ mri, ...data }, onUploadProgress) => {
       // multipart: os dados do caso vão como JSON no campo `data` e a RM no campo `mri`
       const form = new FormData();
       form.append("data", JSON.stringify(data));
       form.append("mri", mri, mri.name);
-      return request<ClinicalCase>("POST", "/cases", { body: form });
+      return upload<ClinicalCase>("/cases", form, onUploadProgress);
     },
     registerDecision: (id, input) => request<ClinicalCase>("POST", `/cases/${id}/decision`, { body: input }),
   },

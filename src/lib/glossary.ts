@@ -60,6 +60,51 @@ export const GLOSSARY: GlossaryEntry[] = [
     short: "Gene da apolipoproteína E. Cada alelo ε4 aumenta o risco de Alzheimer; o modelo usa o número de alelos ε4.",
   },
   {
+    id: "icv",
+    term: "Volume intracraniano",
+    aka: "ICV",
+    short:
+      "Volume total dentro do crânio, medido na RM. Reflete o tamanho da cabeça, não a doença. O modelo divide os outros volumes por ele para comparar pessoas de tamanhos diferentes.",
+  },
+  {
+    id: "hipocampo",
+    term: "Hipocampo",
+    short:
+      "Soma dos volumes dos hipocampos esquerdo e direito. A estrutura é ligada à memória recente e costuma atrofiar cedo na doença de Alzheimer.",
+  },
+  {
+    id: "ventriculos",
+    term: "Ventrículos laterais",
+    short:
+      "Cavidades cerebrais com líquor, que aumentam quando o cérebro perde volume. O aumento não é específico de Alzheimer.",
+  },
+  {
+    id: "idade",
+    term: "Idade",
+    short:
+      "O modelo usa a idade na data do exame, calculada a partir do nascimento. O treino cobriu de 55 a 90 anos; fora dessa faixa a sugestão é menos confiável.",
+  },
+  {
+    id: "escolaridade",
+    term: "Escolaridade",
+    short: "Anos completos de estudo formal. Escolaridade alta pode mascarar sintomas iniciais (reserva cognitiva).",
+  },
+  {
+    id: "sexo",
+    term: "Sexo",
+    short: "Sexo registrado do paciente, no formato da base de treino. Entra no modelo como variável clínica.",
+  },
+  {
+    id: "estado-civil",
+    term: "Estado civil",
+    short: "Dado demográfico da base de treino que também entra no modelo. Em branco, é estimado a partir de casos parecidos.",
+  },
+  {
+    id: "data-exame",
+    term: "Data do exame",
+    short: "Dia em que a RM foi feita. Serve para calcular a idade do paciente no exame.",
+  },
+  {
     id: "volumetria",
     term: "Volumetria",
     aka: "FreeSurfer",

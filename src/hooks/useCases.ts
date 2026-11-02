@@ -48,8 +48,8 @@ function useCaseMutation<TVars>(
   });
 }
 
-export function useCreateCase() {
-  return useCaseMutation((input: NewCaseInput) => api.cases.create(input), {
+export function useCreateCase(onUploadProgress?: (fraction: number) => void) {
+  return useCaseMutation((input: NewCaseInput) => api.cases.create(input, onUploadProgress), {
     success: (c) => `Caso ${c.id} enviado para análise`,
     error: "Não foi possível enviar o caso",
   });

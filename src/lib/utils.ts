@@ -49,3 +49,8 @@ export function lowerFirst(text: string) {
   if (/^[A-Z][A-Z0-9]/.test(text) || /^[A-Z][a-z]+[A-Z]/.test(text)) return text;
   return text.charAt(0).toLowerCase() + text.slice(1);
 }
+
+/** Data de hoje (aaaa-mm-dd) no fuso do usuário; `toISOString` daria o dia seguinte à noite no Brasil. */
+export function localToday() {
+  return format(new Date(), "yyyy-MM-dd");
+}

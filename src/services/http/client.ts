@@ -45,18 +45,49 @@ export async function request<T>(
   if (response.status === 401) onUnauthorized?.();
 
   if (!response.ok) {
-    let message = `Erro ${response.status}`;
-    let code: string | undefined;
-    try {
-      const data = (await response.json()) as { message?: string; detail?: string; code?: string };
-      message = data.message ?? data.detail ?? message;
-      code = data.code;
-    } catch {
-      /* corpo vazio ou não-JSON */
-    }
-    throw new ApiError(message, response.status, code);
+    throw toApiError(response.status, await response.text());
   }
 
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
+}
+
+function toApiError(status: number, body: string) {
+  let message = `Erro ${status}`;
+  let code: string | undefined;
+  try {
+    const data = JSON.parse(body) as { message?: string; detail?: string; code?: string };
+    message = data.message ?? data.detail ?? message;
+    code = data.code;
+  } catch {
+    /* corpo vazio ou não-JSON */
+  }
+  return new ApiError(message, status, code);
+}
+
+/** POST multipart com progresso do envio (0–1). Usa XMLHttpRequest porque o fetch não informa o envio. */
+export function upload<T>(path: string, form: FormData, onProgress?: (fraction: number) => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", new URL(`${BASE_URL}${path}`, window.location.origin));
+    xhr.setRequestHeader("Accept", "application/json");
+    if (authToken) xhr.setRequestHeader("Authorization", `Bearer ${authToken}`);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress?.(event.loaded / event.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status === 401) onUnauthorized?.();
+      if (xhr.status < 200 || xhr.status >= 300) {
+        reject(toApiError(xhr.status, xhr.responseText));
+        return;
+      }
+      try {
+        resolve(JSON.parse(xhr.responseText) as T);
+      } catch {
+        reject(new ApiError("O servidor devolveu uma resposta inválida.", xhr.status));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Não foi possível conectar ao servidor. Verifique sua conexão e tente de novo."));
+    xhr.send(form);
+  });
 }
