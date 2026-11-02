@@ -28,32 +28,30 @@ Conta de demonstração: `medico@mxai.app` / `demo1234` (a tela de login tem um 
 
 Deploy na Vercel: o projeto é detectado como Vite e o `vercel.json` redireciona as rotas para `index.html`. Sem variáveis de ambiente, usa a API simulada; para o backend real, configure `VITE_USE_MOCK=false` e `VITE_API_URL`.
 
-### Publicar no Azure Static Web Apps
+### Publicar no Azure App Service
 
-O Static Web Apps (plano Free) publica o site a cada push na branch `main`, por um workflow do GitHub Actions que ele mesmo cria no repositório. O `staticwebapp.config.json` manda as rotas do React Router (`/app/casos/…`) para o `index.html`.
+O workflow `.github/workflows/azure-app-service.yml` compila o site com o backend real e o publica no App Service `mxai-front` a cada push na `main`. O App Service serve o `dist/` com `pm2 serve --spa`, que manda as rotas do React Router (`/app/casos/…`) para o `index.html`.
 
-1. No portal da Azure: **Create a resource → Static Web App**.
-   - **Resource group:** o do projeto.
-   - **Plan:** Free.
-   - **Source:** GitHub. Entre na conta com acesso de administrador ao repositório e escolha a organização, o repositório e a branch `main`.
-   - **Build presets:** Custom, com **App location** `/`, **Api location** vazio e **Output location** `dist`.
-2. **Review + create.** A Azure grava `.github/workflows/azure-static-web-apps-….yml` no repositório e dispara o primeiro build.
-3. No workflow criado, acrescente ao passo `Build And Deploy` as variáveis do build, para usar o backend real:
+O Static Web Apps não serve aqui: a assinatura Azure for Students só permite regiões em que ele não existe.
 
-   ```yaml
-         - name: Build And Deploy
-           id: builddeploy
-           uses: Azure/static-web-apps-deploy@v1
-           env:
-             VITE_USE_MOCK: "false"
-             VITE_API_URL: https://<app service do backend>.azurewebsites.net/api
-           with:
-             # (o que a Azure gerou fica como está)
+Configuração, uma vez só (variáveis `GRUPO` e `SITE` como no README do backend):
+
+1. Crie o App Service no mesmo plano do backend e pegue o perfil de publicação:
+
+   ```bash
+   az webapp create -g $GRUPO -p tcc-plano -n mxai-front --runtime "NODE:22-lts" \
+     --startup-file "pm2 serve /home/site/wwwroot --no-daemon --spa"
+   az webapp config appsettings set -g $GRUPO -n mxai-front --settings SCM_DO_BUILD_DURING_DEPLOYMENT=false
+   az resource update -g $GRUPO --namespace Microsoft.Web --resource-type basicPublishingCredentialsPolicies \
+     --parent sites/mxai-front --name scm --set properties.allow=true
+   az webapp deployment list-publishing-profiles -g $GRUPO -n mxai-front --xml > perfil-mxai-front.xml
    ```
 
-4. No backend, libere o endereço do site (`https://<nome>.azurestaticapps.net`) na variável `CORS_ORIGEM`.
+2. **O dono do repositório** cadastra o conteúdo de `perfil-mxai-front.xml` em **Settings → Secrets and variables → Actions → New repository secret**, com o nome `AZURE_WEBAPP_PUBLISH_PROFILE`. O perfil permite publicar no site: mande-o por mensagem privada e apague o arquivo depois.
+3. Se o endereço do backend mudar, ajuste `VITE_API_URL` no workflow.
+4. No backend, libere `https://mxai-front.azurewebsites.net` na variável `CORS_ORIGEM`.
 
-A partir daí, cada push na `main` atualiza o site em 1 a 3 minutos. O andamento aparece na aba **Actions** do GitHub.
+A partir daí, cada push na `main` atualiza o site em 2 a 4 minutos. O andamento aparece na aba **Actions** do GitHub; **Run workflow** publica de novo sem precisar de commit.
 
 Os dados da API simulada ficam no `localStorage`. Para voltar ao estado inicial: menu do usuário → **Restaurar dados iniciais**.
 
