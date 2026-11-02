@@ -14,19 +14,19 @@ export function ModelInputsPanel({ data }: { data: ClinicalCase }) {
   return (
     <div className="space-y-4">
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile label="Idade" value={`${patient.age} anos`} />
-        <Tile label="Sexo" value={patient.sex === "F" ? "Feminino" : "Masculino"} />
-        <Tile label="Escolaridade" value={`${patient.educationYears} anos`} />
-        <Tile label="Estado civil" value={tabular.marital && MARITAL_LABEL[tabular.marital]} />
+        <Tile label={<GlossaryTerm id="idade">Idade</GlossaryTerm>} value={`${patient.age} anos`} />
+        <Tile label={<GlossaryTerm id="sexo">Sexo</GlossaryTerm>} value={patient.sex === "F" ? "Feminino" : "Masculino"} />
+        <Tile label={<GlossaryTerm id="escolaridade">Escolaridade</GlossaryTerm>} value={`${patient.educationYears} anos`} />
+        <Tile label={<GlossaryTerm id="estado-civil">Estado civil</GlossaryTerm>} value={tabular.marital && MARITAL_LABEL[tabular.marital]} />
         <Tile
           label={<GlossaryTerm id="apoe">APOE</GlossaryTerm>}
           value={tabular.apoe}
           hint={tabular.apoe && `${apoe4Alleles(tabular.apoe)} alelo(s) ε4`}
         />
-        <Tile label={<GlossaryTerm id="volumetria">ICV</GlossaryTerm>} value={mm3(icv)} />
-        <Tile label="Hipocampo" value={mm3(tabular.hippocampusMm3)} hint={ratio(tabular.hippocampusMm3)} />
+        <Tile label={<GlossaryTerm id="icv">ICV</GlossaryTerm>} value={mm3(icv)} />
+        <Tile label={<GlossaryTerm id="hipocampo">Hipocampo</GlossaryTerm>} value={mm3(tabular.hippocampusMm3)} hint={ratio(tabular.hippocampusMm3)} />
         <Tile
-          label="Ventrículos laterais"
+          label={<GlossaryTerm id="ventriculos">Ventrículos laterais</GlossaryTerm>}
           value={mm3(tabular.lateralVentriclesMm3)}
           hint={ratio(tabular.lateralVentriclesMm3)}
         />

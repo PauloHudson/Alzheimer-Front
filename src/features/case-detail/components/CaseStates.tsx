@@ -1,15 +1,28 @@
+import { useEffect, useState } from "react";
 import { Cpu, FileWarning } from "lucide-react";
 import type { ClinicalCase } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
+import { AnalysisSteps, ProgressBar } from "./AnalysisSteps";
 
-const STEPS = [
-  "Extração do encéfalo (skull strip) e corte no nível ventricular",
-  "Inferência do modelo multimodal",
-  "Geração do mapa de atenção (Grad-CAM)",
-];
+/**
+ * Segundos estimados para passar à inferência e ao mapa de atenção. O backend só informa "processando",
+ * então a etapa exibida é uma estimativa pelo tempo decorrido; a última fica ativa até o resultado chegar.
+ */
+const STEP_STARTS = [25, 60];
+const SLOW_AFTER_SECONDS = 180;
 
-/** Estado de processamento (feedback de status — H1 de Nielsen). O backend não informa progresso parcial. */
-export function ProcessingState() {
+/** Estado de processamento (feedback de status — H1 de Nielsen). */
+export function ProcessingState({ data }: { data: ClinicalCase }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const elapsed = Math.max(0, Math.floor((now - new Date(data.createdAt).getTime()) / 1_000));
+  const active = 1 + STEP_STARTS.filter((start) => elapsed >= start).length;
+  const clock = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
+
   return (
     <Card>
       <CardContent className="flex flex-col items-center gap-6 py-12 text-center">
@@ -23,11 +36,21 @@ export function ProcessingState() {
             Você pode sair desta tela — o caso aparecerá como “Aguardando revisão” quando a sugestão estiver pronta.
           </p>
         </div>
-        <ol className="w-full max-w-md list-decimal space-y-1.5 pl-5 text-left text-sm text-muted-foreground">
-          {STEPS.map((step) => (
-            <li key={step}>{step}</li>
-          ))}
-        </ol>
+        <div className="w-full max-w-md space-y-4">
+          <div className="space-y-1.5">
+            <ProgressBar label="Análise em andamento" />
+            <p className="text-right text-xs tabular-nums text-muted-foreground">Tempo decorrido: {clock}</p>
+          </div>
+          <AnalysisSteps active={active} />
+          <p className="text-left text-xs text-muted-foreground">
+            As etapas são uma estimativa pelo tempo decorrido: o servidor avisa só quando a análise termina.
+          </p>
+          {elapsed >= SLOW_AFTER_SECONDS && (
+            <p className="rounded-lg bg-warning-soft px-3 py-2 text-left text-xs text-warning">
+              Está demorando mais que o esperado. A análise continua no servidor e você pode voltar depois.
+            </p>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

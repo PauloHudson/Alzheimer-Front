@@ -12,6 +12,10 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // só em desenvolvimento: o back aceita CORS apenas do site publicado, então as chamadas passam pelo Vite
+    proxy: {
+      "/api": { target: "https://mxai-tcc4083.azurewebsites.net", changeOrigin: true },
+    },
   },
   build: {
     rollupOptions: {

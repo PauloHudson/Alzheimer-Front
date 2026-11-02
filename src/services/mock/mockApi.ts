@@ -192,8 +192,12 @@ export const mockApi: Api = {
       return clone(findCase(id));
     },
 
-    async create(input) {
-      await latency(700, 1200);
+    async create(input, onUploadProgress) {
+      for (let i = 1; i <= 10; i++) {
+        await sleep(150);
+        onUploadProgress?.(i / 10);
+      }
+      await latency(400, 700);
       const user = currentUser();
       const nextNumber = Math.max(...db.cases.map((c) => Number(c.id.replace(/\D/g, "")) || 0), 1000) + 1;
       const createdAt = new Date().toISOString();

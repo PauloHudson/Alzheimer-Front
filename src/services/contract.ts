@@ -24,7 +24,7 @@ export interface Api {
     list(filters?: CaseFilters): Promise<CaseSummary[]>;
     get(id: string): Promise<ClinicalCase>;
     /** Cria o caso e dispara a inferência; devolve o caso já com status "processando". */
-    create(input: NewCaseInput): Promise<ClinicalCase>;
+    create(input: NewCaseInput, onUploadProgress?: (fraction: number) => void): Promise<ClinicalCase>;
     registerDecision(id: string, input: DecisionInput): Promise<ClinicalCase>;
   };
   demo?: {

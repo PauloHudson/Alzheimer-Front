@@ -11,7 +11,6 @@ const LoginPage = lazy(() => import("@/features/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/features/auth/RegisterPage"));
 const CasesPage = lazy(() => import("@/features/cases/CasesPage"));
 const CaseDetailPage = lazy(() => import("@/features/case-detail/CaseDetailPage"));
-const ReportPage = lazy(() => import("@/features/case-detail/ReportPage"));
 const NewCasePage = lazy(() => import("@/features/new-case/NewCasePage"));
 const NotFoundPage = lazy(() => import("@/components/layout/NotFoundPage"));
 
@@ -62,7 +61,6 @@ export const router = createBrowserRouter([
         path: "/app",
         element: <RequireAuth />,
         children: [
-          { path: "casos/:id/relatorio", element: withSuspense(<ReportPage />) },
           {
             element: <AppShell />,
             children: [

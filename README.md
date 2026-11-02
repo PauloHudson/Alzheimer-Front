@@ -96,7 +96,7 @@ src/
     ├── auth/            # login e cadastro
     ├── cases/           # lista com busca e filtro por status
     ├── new-case/        # envio de RM + dados clínicos
-    ├── case-detail/     # sugestão, explicação, decisão, relatório
+    ├── case-detail/     # sugestão, explicação, decisão
     └── viewer/          # corte axial com o Grad-CAM devolvido pela API
 ```
 

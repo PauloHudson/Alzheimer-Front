@@ -65,6 +65,7 @@
   --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
   --shadow-elevated: 0 10px 30px -10px rgb(15 23 42 / 0.18), 0 4px 10px -4px rgb(15 23 42 / 0.08);
 
+  --animate-indeterminate: indeterminate 1.4s ease-in-out infinite;
   --animate-fade-in: fade-in 0.2s ease-out;
   --animate-fade-up: fade-up 0.45s ease-out both;
   --animate-scale-in: scale-in 0.18s ease-out;
@@ -76,6 +77,10 @@
   --animate-collapsible-down: collapsible-down 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-collapsible-up: collapsible-up 0.24s ease-in;
 
+  @keyframes indeterminate {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(300%); }
+  }
   @keyframes fade-in {
     from { opacity: 0; }
     to { opacity: 1; }
@@ -212,15 +217,6 @@
   .scrollbar-thin {
     scrollbar-width: thin;
     scrollbar-color: var(--color-input) transparent;
-  }
-}
-
-@media print {
-  .no-print {
-    display: none !important;
-  }
-  body {
-    background: #fff;
   }
 }
 
