@@ -1,6 +1,6 @@
 import type { DiagnosticClass, Prediction, Sex, TabularInput } from "@/types";
 import { apoe4Alleles } from "@/lib/domain";
-import { renderHeatmap, renderSlice } from "./syntheticMri";
+import { renderGradCam } from "./syntheticMri";
 
 /**
  * Gerador de predições plausíveis para a API simulada. Não é o modelo: só produz
@@ -66,8 +66,7 @@ export function buildPrediction(input: PredictionInput): Prediction {
     probabilities,
     suggested,
     gradcam: {
-      sliceUrl: renderSlice(atrophy, seed),
-      heatmapUrl: renderHeatmap(pAd, seed),
+      ...renderGradCam(atrophy, pAd, seed),
       explainedClass: "AD",
     },
     modalityShare: { image: imageShare, tabular: 1 - imageShare },

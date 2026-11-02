@@ -92,9 +92,9 @@ export type Architecture = "late_fusion" | "early_fusion" | "image_only" | "tabu
 export interface GradCam {
   /** Corte axial no nível ventricular, já pré-processado (PNG em tons de cinza; URL ou data URI). */
   sliceUrl: string;
-  /** Mapa normalizado em [0, 1] como PNG em tons de cinza (0 = preto, 1 = branco). A interface aplica a paleta. */
+  /** O mesmo corte com o mapa já colorido por cima (`gradcam_png` da API do modelo). A interface exibe como vem. */
   heatmapUrl: string;
-  /** Classe cujo logit foi explicado (o pipeline explica sempre AD). */
+  /** Classe cujo logit foi explicado: a classe prevista. */
   explainedClass: DiagnosticClass;
 }
 

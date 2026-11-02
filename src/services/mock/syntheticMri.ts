@@ -3,8 +3,9 @@
  *
  * - um corte axial 224×224 no nível ventricular, já sem crânio (skull strip) — o
  *   que a CNN recebe;
- * - um mapa Grad-CAM em tons de cinza, calculado numa grade 7×7 (resolução da
- *   `layer4` da ResNet50) e ampliado bilinearmente, normalizado em [0, 1].
+ * - o mesmo corte com o mapa Grad-CAM colorido por cima, como o `gradcam_png` da
+ *   API do modelo. O mapa é calculado numa grade 7×7 (resolução da `layer4` da
+ *   ResNet50) e ampliado bilinearmente.
  *
  * Não são imagens médicas. Imagens reais da ADNI não podem ser redistribuídas,
  * por isso o protótipo publicado não usa nenhuma.
@@ -121,24 +122,29 @@ function axial(u: number, v: number, a: number, n: number) {
 
 // ------------------------------------------------------------------ saída
 
-function toDataUrl(gray: Float32Array) {
+/** `rgb(i)` devolve a cor do pixel i, com canais em [0, 1]. */
+function toDataUrl(rgb: (i: number) => [number, number, number]) {
   const canvas = document.createElement("canvas");
   canvas.width = IMAGE_SIZE;
   canvas.height = IMAGE_SIZE;
   const ctx = canvas.getContext("2d")!;
   const image = ctx.createImageData(IMAGE_SIZE, IMAGE_SIZE);
-  for (let i = 0; i < gray.length; i++) {
-    const g = Math.max(0, Math.min(255, Math.round(gray[i]! * 255)));
-    image.data[i * 4] = g;
-    image.data[i * 4 + 1] = g;
-    image.data[i * 4 + 2] = g;
+  for (let i = 0; i < IMAGE_SIZE * IMAGE_SIZE; i++) {
+    const color = rgb(i);
+    for (let c = 0; c < 3; c++) image.data[i * 4 + c] = Math.max(0, Math.min(255, Math.round(color[c]! * 255)));
     image.data[i * 4 + 3] = 255;
   }
   ctx.putImageData(image, 0, 0);
   return canvas.toDataURL("image/png");
 }
 
-export function renderSlice(atrophy: number, seed: number) {
+/** Paleta tipo "jet" (azul → verde → amarelo → vermelho), a mesma da API do modelo. */
+function jet(v: number): [number, number, number] {
+  const c = (x: number) => Math.max(0, Math.min(1, x));
+  return [c(1.5 - Math.abs(4 * v - 3)), c(1.5 - Math.abs(4 * v - 2)), c(1.5 - Math.abs(4 * v - 1))];
+}
+
+function sliceValues(atrophy: number, seed: number) {
   const size = IMAGE_SIZE;
   const raw = new Float32Array(size * size);
   for (let y = 0; y < size; y++) {
@@ -154,7 +160,7 @@ export function renderSlice(atrophy: number, seed: number) {
       raw[y * size + x] = value;
     }
   }
-  return toDataUrl(raw);
+  return raw;
 }
 
 /**
@@ -162,7 +168,7 @@ export function renderSlice(atrophy: number, seed: number) {
  * ventrículos laterais; sem evidência de AD o mapa perde o foco e escorre para
  * a borda inferior — o mesmo comportamento descrito na §6.18 do README do backend.
  */
-export function renderHeatmap(pAd: number, seed: number) {
+function heatmapValues(pAd: number, seed: number) {
   const GRID = 7;
   const side = hash(seed, 7) > 0.5 ? 1 : -1;
   const focus = { x: 3 + side * 1.1, y: 4.1 };
@@ -199,5 +205,23 @@ export function renderHeatmap(pAd: number, seed: number) {
     }
   }
   for (let i = 0; i < out.length; i++) out[i] = (out[i]! - min) / (max - min + 1e-8);
-  return toDataUrl(out);
+  return out;
+}
+
+/**
+ * Corte e corte com o mapa sobreposto, como `imagem_png` e `gradcam_png` da API:
+ * opacidade do mapa proporcional ao valor (0,55 × mapa).
+ */
+export function renderGradCam(atrophy: number, pAd: number, seed: number) {
+  const slice = sliceValues(atrophy, seed);
+  const map = heatmapValues(pAd, seed);
+  const gray = (i: number): [number, number, number] => [slice[i]!, slice[i]!, slice[i]!];
+  return {
+    sliceUrl: toDataUrl(gray),
+    heatmapUrl: toDataUrl((i) => {
+      const alpha = 0.55 * map[i]!;
+      const heat = jet(map[i]!);
+      return gray(i).map((g, c) => (1 - alpha) * g + alpha * heat[c]!) as [number, number, number];
+    }),
+  };
 }

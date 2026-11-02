@@ -28,11 +28,38 @@ Conta de demonstração: `medico@mxai.app` / `demo1234` (a tela de login tem um 
 
 Deploy na Vercel: o projeto é detectado como Vite e o `vercel.json` redireciona as rotas para `index.html`. Sem variáveis de ambiente, usa a API simulada; para o backend real, configure `VITE_USE_MOCK=false` e `VITE_API_URL`.
 
+### Publicar no Azure Static Web Apps
+
+O Static Web Apps (plano Free) publica o site a cada push na branch `main`, por um workflow do GitHub Actions que ele mesmo cria no repositório. O `staticwebapp.config.json` manda as rotas do React Router (`/app/casos/…`) para o `index.html`.
+
+1. No portal da Azure: **Create a resource → Static Web App**.
+   - **Resource group:** o do projeto.
+   - **Plan:** Free.
+   - **Source:** GitHub. Entre na conta com acesso de administrador ao repositório e escolha a organização, o repositório e a branch `main`.
+   - **Build presets:** Custom, com **App location** `/`, **Api location** vazio e **Output location** `dist`.
+2. **Review + create.** A Azure grava `.github/workflows/azure-static-web-apps-….yml` no repositório e dispara o primeiro build.
+3. No workflow criado, acrescente ao passo `Build And Deploy` as variáveis do build, para usar o backend real:
+
+   ```yaml
+         - name: Build And Deploy
+           id: builddeploy
+           uses: Azure/static-web-apps-deploy@v1
+           env:
+             VITE_USE_MOCK: "false"
+             VITE_API_URL: https://<app service do backend>.azurewebsites.net/api
+           with:
+             # (o que a Azure gerou fica como está)
+   ```
+
+4. No backend, libere o endereço do site (`https://<nome>.azurestaticapps.net`) na variável `CORS_ORIGEM`.
+
+A partir daí, cada push na `main` atualiza o site em 1 a 3 minutos. O andamento aparece na aba **Actions** do GitHub.
+
 Os dados da API simulada ficam no `localStorage`. Para voltar ao estado inicial: menu do usuário → **Restaurar dados iniciais**.
 
 ### Roteiro (≈3 min)
 
-1. Abra **Ivo Bittencourt**: sugestão de DA com confiança alta. Ajuste a opacidade do mapa de atenção (tecla **O** liga e desliga).
+1. Abra **Ivo Bittencourt**: sugestão de DA com confiança alta. Veja o mapa de atenção sobre o corte.
 2. Abra **Maria Silva**: confiança baixa e volumetria imputada (avisos em "Limites desta sugestão").
 3. Registre a decisão de um dos dois casos. Ela não pode ser editada depois.
 4. Crie um **Novo caso** com "Usar exame de exemplo": a análise simulada leva cerca de 12 s.
@@ -72,7 +99,7 @@ src/
     ├── cases/           # lista com busca e filtro por status
     ├── new-case/        # envio de RM + dados clínicos
     ├── case-detail/     # sugestão, explicação, decisão, relatório
-    └── viewer/          # corte axial + Grad-CAM com opacidade
+    └── viewer/          # corte axial com o Grad-CAM devolvido pela API
 ```
 
 ---
@@ -118,7 +145,7 @@ A inferência é assíncrona: `POST /cases` responde logo com `status: "processa
 | campo ausente | imputado pelo `KNNImputer` do pré-processador da dobra |
 | `prediction.classes`, `probabilities` | ordem de `classes_atuais()` e `softmax` dos logits |
 | `prediction.gradcam.sliceUrl` | canal central do tensor de entrada, `denormalize(image)[..., 1]` (`gradcam.py`), como PNG 224×224 em tons de cinza |
-| `prediction.gradcam.heatmapUrl` | `GradCAM(model)(image, tabular, class_idx=AD)` → `(cam * 255).astype(uint8)` como PNG em tons de cinza; a interface aplica a paleta |
+| `prediction.gradcam.heatmapUrl` | `gradcam_png` da API do modelo: o corte com o Grad-CAM da classe prevista já colorido por cima; a interface exibe a imagem sem alterá-la |
 | `prediction.modalityShare` | ponto B do `shap_analysis.py` (SHAP na entrada da MLP de fusão): Σ\|SHAP\| do bloco visual ÷ total, **para este exame** — hoje o script só grava a média por classe |
 | `prediction.architecture`, `modelVersion` | nome da arquitetura e identificação do checkpoint (ex.: `late_fusion-kfold-centro-d1`) |
 
@@ -153,7 +180,6 @@ Tudo continua no histórico do git, caso algo volte ao escopo.
 ## Acessibilidade
 
 - Componentes Radix (teclado, foco e ARIA corretos em diálogos, menus, selects e sliders).
-- Mapa de atenção operável por teclado (tecla **O**) e com opacidade ajustável.
 - Foco levado ao primeiro erro do formulário, sem ficar sob o cabeçalho fixo (WCAG 2.4.11).
 - Cor nunca é o único canal (faixas de confiança e status têm texto).
 - Respeita `prefers-reduced-motion`; layout responsivo sem rolagem horizontal em 390 px.

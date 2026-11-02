@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Printer } from "lucide-react";
-import type { GradCam } from "@/types";
 import { Button } from "@/components/ui/button";
 import { LogoMark } from "@/components/brand/Logo";
 import { ErrorState } from "@/components/ui/states";
@@ -17,31 +16,14 @@ import {
   summarizePrediction,
 } from "@/lib/domain";
 import { formatDate, formatDateTime, formatPercent } from "@/lib/utils";
-import { composeGradCam } from "@/features/viewer/heatmap";
 import { useAuth } from "@/store/auth";
-
-/** Corte com o mapa de atenção sobreposto, como imagem estática para o relatório. */
-function useKeyImage(gradcam: GradCam | undefined) {
-  const [image, setImage] = useState<string | null>(null);
-  useEffect(() => {
-    if (!gradcam) return;
-    let cancelled = false;
-    composeGradCam(gradcam.sliceUrl, gradcam.heatmapUrl)
-      .then((url) => !cancelled && setImage(url))
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [gradcam]);
-  return image;
-}
 
 export default function ReportPage() {
   const { id } = useParams<{ id: string }>();
   const user = useAuth((s) => s.user)!;
   const { data, isLoading, isError } = useCase(id);
   const prediction = data?.prediction;
-  const image = useKeyImage(prediction?.gradcam);
+  const image = prediction?.gradcam?.heatmapUrl;
 
   useEffect(() => {
     if (data) document.title = `Relatório ${data.id} · M-XAI`;
