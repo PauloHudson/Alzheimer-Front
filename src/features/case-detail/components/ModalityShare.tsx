@@ -2,11 +2,7 @@ import { ClipboardList, ScanLine } from "lucide-react";
 import type { Prediction } from "@/types";
 import { formatPercent } from "@/lib/utils";
 
-/**
- * Quanto da atribuição SHAP veio de cada modalidade, na entrada da MLP de fusão.
- * É o que o late fusion permite explicar por paciente: o ramo tabular é uma
- * Random Forest, então não há atribuição por variável clínica (§5.2 do backend).
- */
+/** Quanto das contribuições deste exame veio da imagem e quanto dos dados clínicos. */
 export function ModalityShare({ share }: { share: NonNullable<Prediction["modalityShare"]> }) {
   const items = [
     { label: "Imagem (RM)", value: share.image, color: "bg-primary", icon: <ScanLine className="size-3.5 text-primary" /> },

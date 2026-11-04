@@ -10,7 +10,7 @@ import { buildPrediction } from "./prediction";
  * novos casos sobrevivam a recarregamentos durante testes de usabilidade.
  */
 
-const STORAGE_KEY = "mxai.mockdb.v5";
+const STORAGE_KEY = "mxai.mockdb.v6";
 /** Duração simulada da inferência (skull strip + CNN + Grad-CAM). */
 const PROCESSING_MS = 12_000;
 

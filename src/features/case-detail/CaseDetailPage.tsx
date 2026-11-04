@@ -16,6 +16,7 @@ import { formatDate, formatPercent } from "@/lib/utils";
 import { GradCamViewer } from "@/features/viewer/GradCamViewer";
 import { ProbabilityBars } from "./components/ProbabilityBars";
 import { ModalityShare } from "./components/ModalityShare";
+import { FactorContributions } from "./components/FactorContributions";
 import { ModelInputsPanel } from "./components/ModelInputsPanel";
 import { ModelLimits } from "./components/ModelLimits";
 import { DecisionPanel } from "./components/DecisionPanel";
@@ -120,6 +121,19 @@ export default function CaseDetailPage() {
                 </CardHeader>
                 <CardContent>
                   <ModalityShare share={prediction.modalityShare} />
+                </CardContent>
+              </Card>
+            )}
+
+            {prediction.factors && prediction.factors.length > 0 && (
+              <Card>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-sm">
+                    <GlossaryTerm id="contribuicao-fator">O que mais pesou neste caso</GlossaryTerm>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FactorContributions data={data} factors={prediction.factors} />
                 </CardContent>
               </Card>
             )}

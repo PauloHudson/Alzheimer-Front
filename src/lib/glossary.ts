@@ -15,14 +15,21 @@ export const GLOSSARY: GlossaryEntry[] = [
     term: "Mapa de atenção",
     aka: "Grad-CAM",
     short:
-      "Áreas quentes são as que mais aproximaram o caso do padrão de Alzheimer, qualquer que seja a sugestão final. Não é segmentação nem indica lesão; a resolução é baixa (grade 7×7 ampliada).",
+      "Áreas quentes são as que mais sustentam a classe sugerida pelo modelo: num caso sugerido como normal, mostram a evidência de normalidade. Não é segmentação nem indica lesão; a resolução é baixa (grade 7×7 ampliada).",
   },
   {
     id: "peso-modalidade",
     term: "Peso de cada modalidade",
     aka: "SHAP",
     short:
-      "Quanto da decisão veio da imagem e quanto dos dados clínicos, medido na entrada da camada que funde as duas. Peso alto não quer dizer que a modalidade esteja certa.",
+      "Quanto da explicação deste caso veio da imagem e quanto dos dados clínicos: a contribuição absoluta da ressonância dividida pela soma das contribuições de todos os fatores. Peso alto não quer dizer que a modalidade esteja certa.",
+  },
+  {
+    id: "contribuicao-fator",
+    term: "Contribuição de cada fator",
+    aka: "SHAP",
+    short:
+      "Quantos pontos de probabilidade de Alzheimer cada dado moveu neste caso, comparado a um paciente de referência com os valores médios do treino. Mostra o que pesou no modelo, não a causa da doença.",
   },
   {
     id: "confianca",

@@ -8,7 +8,7 @@ Interface web de apoio ao **diagnóstico explicável da doença de Alzheimer**, 
 O escopo da interface acompanha o que o pipeline do modelo (repositório `tcc-alzheimer-diagnosis-multimodal-xai`, branch `codigo-treinamento`) produz hoje:
 
 1. o médico envia a **RM T1** e os **dados clínicos** do paciente;
-2. o modelo devolve a **probabilidade por classe**, o **Grad-CAM** sobre o corte analisado e o **peso de cada modalidade** (SHAP);
+2. o modelo devolve a **probabilidade por classe**, o **Grad-CAM** sobre o corte analisado, o **peso de cada modalidade** e a **contribuição de cada fator** (SHAP);
 3. o médico registra a **decisão**, com concordância, conclusão e justificativa.
 
 ---
@@ -144,7 +144,8 @@ A inferência é assíncrona: `POST /cases` responde logo com `status: "processa
 | `prediction.classes`, `probabilities` | ordem de `classes_atuais()` e `softmax` dos logits |
 | `prediction.gradcam.sliceUrl` | canal central do tensor de entrada, `denormalize(image)[..., 1]` (`gradcam.py`), como PNG 224×224 em tons de cinza |
 | `prediction.gradcam.heatmapUrl` | `gradcam_png` da API do modelo: o corte com o Grad-CAM da classe prevista já colorido por cima; a interface exibe a imagem sem alterá-la |
-| `prediction.modalityShare` | ponto B do `shap_analysis.py` (SHAP na entrada da MLP de fusão): Σ\|SHAP\| do bloco visual ÷ total, **para este exame** — hoje o script só grava a média por classe |
+| `prediction.factors`, `referenceProbability` | `contribuicoes` e `probabilidade_referencia` da API do modelo: valores de Shapley exatos sobre 9 fatores (imagem e 8 dados clínicos), em pontos de P(AD), contra um paciente de referência |
+| `prediction.modalityShare` | \|Shapley da imagem\| ÷ soma dos \|Shapley\|, **para este exame** |
 | `prediction.architecture`, `modelVersion` | nome da arquitetura e identificação do checkpoint (ex.: `late_fusion-kfold-centro-d1`) |
 
 As imagens podem ir como *data URI* (`data:image/png;base64,…`) ou como URL. Se forem URL de outra origem, o servidor precisa mandar cabeçalho CORS, porque a interface lê os pixels do mapa num `<canvas>` para colorir.
@@ -165,7 +166,6 @@ A primeira versão (commit `f25089a`) simulava saídas que o modelo não produz.
 | Removido | Motivo |
 |---|---|
 | Visualizador 3D com três planos e regiões anatômicas nomeadas | O Grad-CAM é de **um corte axial 2D**, em grade 7×7, sem rótulo anatômico |
-| SHAP por variável clínica ("fatores") | O ramo tabular é uma Random Forest; o SHAP só separa imagem × clínica (§5.2 do README do modelo) |
 | Biomarcadores com percentil normativo | Não há referência normativa no pipeline |
 | MMSE, MoCA e CDR no formulário | Ficam fora do modelo de propósito: o rótulo da ADNI é derivado deles |
 | Perfis (técnico, radiologista, neurologista), encaminhamento e parecer, adendos, trilha de auditoria, histórico de exames, painel com gráficos | Exigiriam um backend de aplicação inteiro além da inferência |

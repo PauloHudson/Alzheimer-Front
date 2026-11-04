@@ -1,4 +1,4 @@
-import type { DiagnosticClass, Prediction, Sex, TabularInput } from "@/types";
+import type { DiagnosticClass, FactorId, Prediction, Sex, TabularInput } from "@/types";
 import { apoe4Alleles } from "@/lib/domain";
 import { renderGradCam } from "./syntheticMri";
 
@@ -21,6 +21,30 @@ export interface PredictionInput {
 
 const sigmoid = (x: number) => 1 / (1 + Math.exp(-x));
 const jitter = (seed: number, salt: number) => ((Math.sin(seed * 12.9898 + salt * 78.233) * 43758.5453) % 1 + 1) % 1;
+
+const REFERENCE_P_AD = 0.21;
+
+/** Contribuições plausíveis: dividem P(AD) − referência entre os fatores; campo ausente fica em zero. */
+function buildFactors(pAd: number, tabular: TabularInput, seed: number): Prediction["factors"] {
+  const pesos: [FactorId, number, boolean][] = [
+    ["imagem", 0.45, false],
+    ["hipocampo", 0.2, !tabular.icvMm3 || !tabular.hippocampusMm3],
+    ["apoe", 0.15, !tabular.apoe],
+    ["ventriculos", 0.08, !tabular.icvMm3 || !tabular.lateralVentriclesMm3],
+    ["idade", 0.07, false],
+    ["icv", 0.02, !tabular.icvMm3],
+    ["estado_civil", 0.01, !tabular.marital || tabular.marital === "Unknown"],
+    ["escolaridade", 0.01, false],
+    ["sexo", 0.01, false],
+  ];
+  const sorteados = pesos.map(([, peso, imputed], i) => (imputed ? 0 : peso * (0.6 + 0.8 * jitter(seed, i + 3))));
+  const total = sorteados.reduce((soma, peso) => soma + peso, 0);
+  return pesos.map(([id, , imputed], i) => ({
+    id,
+    imputed,
+    contribution: ((pAd - REFERENCE_P_AD) * sorteados[i]!) / total,
+  }));
+}
 
 export function buildPrediction(input: PredictionInput): Prediction {
   const { age, educationYears, tabular, seed } = input;
@@ -70,6 +94,8 @@ export function buildPrediction(input: PredictionInput): Prediction {
       explainedClass: "AD",
     },
     modalityShare: { image: imageShare, tabular: 1 - imageShare },
+    factors: buildFactors(pAd, tabular, seed),
+    referenceProbability: REFERENCE_P_AD,
     caveats,
   };
 }

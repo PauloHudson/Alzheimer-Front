@@ -98,6 +98,26 @@ export interface GradCam {
   explainedClass: DiagnosticClass;
 }
 
+/** Os 9 fatores explicados: a imagem e os 8 dados clínicos. */
+export type FactorId =
+  | "imagem"
+  | "idade"
+  | "sexo"
+  | "escolaridade"
+  | "estado_civil"
+  | "apoe"
+  | "icv"
+  | "hipocampo"
+  | "ventriculos";
+
+export interface FactorContribution {
+  id: FactorId;
+  /** Valor de Shapley em pontos de P(AD), de -1 a 1. Positivo aproxima de AD; negativo, de CN. */
+  contribution: number;
+  /** Campo não informado: o modelo usou o valor do paciente de referência, e a contribuição é zero. */
+  imputed: boolean;
+}
+
 export interface Prediction {
   modelVersion: string;
   architecture: Architecture;
@@ -108,11 +128,12 @@ export interface Prediction {
   suggested: DiagnosticClass;
   /** Ausente em `tabular_only`, que não tem ramo de imagem. */
   gradcam?: GradCam;
-  /**
-   * Fração da atribuição SHAP (|SHAP|) na entrada da MLP de fusão. Só existe
-   * nas arquiteturas de fusão. Soma 1.
-   */
+  /** Fração das contribuições absolutas (`factors`) que vem da imagem e dos dados clínicos. Soma 1. */
   modalityShare?: { image: number; tabular: number };
+  /** Contribuição de cada fator para este exame. As contribuições somam P(AD) − `referenceProbability`. */
+  factors?: FactorContribution[];
+  /** P(AD) do paciente de referência (média ou moda do treino e imagem média). */
+  referenceProbability?: number;
   /** Avisos específicos do caso (qualidade, fora da distribuição de treino etc.). */
   caveats: string[];
 }
